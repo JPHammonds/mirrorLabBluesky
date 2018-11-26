@@ -1,0 +1,15 @@
+object,channel_name,pv,write_pv,description,name,string_rep,put_complete,
+Gun,relay_magnetron,%s:plc:Magnetron_%d_Power_RB,%s:plc:Mag%d_Pwr_Enable_OUT,Relay Magnetron %d,relay_magnetron_%d,True,True
+Gun,voltage_avg,%s:userAve%d.VAL,,Gun %d Average Energized Voltage,gun%d_voltage_avg,,
+Gun,water_flow_cathode_raw,%sw:USB231:1:Ai%d,,Raw  value for water flow through cathode %d,water_flow_cathode_%d_raw,,
+Gun,water_flow_cathode,%s:userCalcOut1%d.VAL,,Water flow cathode %d,water_flow_cathode_%d,,
+GunSelector,power_on,%s:plc:MPS1_Magnetron_Power_RB,%s:plc:MPS1_Magnetron_Power_RB,Power on the magnetron,mps1_power_on,True,True
+GunSelector,enable_output,%s:ION:set_enable.PROC,,Enable output for magnetron,mps1_enable_output,True,True
+GunSelector,disable_output,%s:ION:set_disable.PROC,,Disable output for magnetron,mps1_disable_output,True,True
+GunSelector,ps_voltage,%s:ION:voltage_sp_rd,%s:ION:voltage,Voltage for power suppy,mps1_voltage,,
+GunSelector,ps_current,%s:ION:current_sp_rd,%s:ION:current,Current for Power supply,mps1_current,,
+GunSelector,ps_power,%s:ION:power_sp_rd,%s:ION:power,Power for power supply,mps1_power,,
+MassFlowControl,flow,%s:plc:MFC_%d_IN,%s:plc:MFC_%d_OUT,Flow for gas to MFC %d,mfc%d_flow,,
+MassFlowControl,valve_on,%s:plc:MFC%d_RB,%s:plc:MFC%d_RC_On_OUT,Valve MFC%d to round chamber,mfc%d_valve_on,True,True
+MassFlowControl,plc_bypass,%s:plc:MFC%d_Manual_OUT,%s:plc:MFC%d_Manual_OUT,Flow MFC%d Control PLC bypass,mfc%d_plc_bypass,True,True
+MassFlowControl,epics_pid_control,%s:userCalc1.%s,%s:userCalc1.%s,MFC%d EPICS PID Flow control enable,mfc%d_epics_pid_control,True,True
