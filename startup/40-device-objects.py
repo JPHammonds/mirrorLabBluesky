@@ -63,7 +63,7 @@ def testDepositionListDevice():
                                 config_file='pv_map.csv')
     logger.debug (dev.configuration)
     print (dev.__class__)
-    
+
 VALVE_ALL_OPEN = 100.0
 VALVE_ALL_CLOSED = 0.000
 CCG_ON_VALUE = 1
@@ -135,24 +135,26 @@ class ChamberCryoPump(DepositionListDevice):
         on and make sure that it is on before completion
         '''
 class GateValve(DepositionListDevice):
-    gate_valve_position = FC(EpicsSignal, "{self.prefix}{self.position_read_pv_suffix}",
+    VALVE_ALL_OPEN = 100.0
+    VALVE_ALL_CLOSED = 0.000
+    position = FC(EpicsSignal, "{self.prefix}{self.position_read_pv_suffix}",
                              write_pv="{self.prefix}{self.position_write_pv_suffix}",
                              tolerance=0.5,
-                             name='gate_valve_position')
-    gate_valve_close_request = FC(EpicsSignal, \
+                             name='position')
+    close_request = FC(EpicsSignal, \
                       "{self.prefix}{self.close_request_read_pv_suffix}", \
                           write_pv="{self.prefix}{self.close_request_write_pv_suffix}", \
-                          name = 'gate_valve_close_request')
-    gate_valve_open_request = FC(EpicsSignal, \
+                          name = 'close_request')
+    open_request = FC(EpicsSignal, \
                          "{self.prefix}{self.open_request_read_pv_suffix}", \
                          write_pv="{self.prefix}{self.open_request_write_pv_suffix}", \
-                         name='gate_valve_open_request')
-    gate_valve_fully_open = FC(EpicsSignal, \
+                         name='open_request')
+    fully_open = FC(EpicsSignal, \
                                  '{self.prefix}{self.fully_open_read_pv_suffix}', \
-                                 name = 'gate_valve_fully_open')
-    gate_valve_fully_closed = FC(EpicsSignal, \
+                                 name = 'fully_open')
+    fully_closed = FC(EpicsSignal, \
                                  '{self.prefix}{self.fully_closed_read_pv_suffix}', \
-                                 name = 'gate_valve_fully_closed')
+                                 name = 'fully_closed')
     
 
     def __init__(self, prefix, 
@@ -177,62 +179,19 @@ class GateValve(DepositionListDevice):
         super(GateValve, self).__init__(prefix, **kwargs)
         
         
-    def close_gate_valve(self, group='gate_valves'):
+    def close(self, group='gate_valves'):
         logger.info("Closing gate valve")
-        yield from bps.abs_set(self.gate_valve_position, \
+        yield from bps.abs_set(self.position, \
                                VALVE_ALL_CLOSED,\
                                group=group)
          
-    def open_gate_valve(self, position=VALVE_ALL_OPEN, \
+    def open(self, position=VALVE_ALL_OPEN, \
                         group='gate_valves'):
         logger.info("Opening gate valve to position %f" % position )
-        yield from bps.abs_set(self.gate_valve_position, \
+        yield from bps.abs_set(self.position, \
                                position, \
                                group=group)
     
-class ChamberWithGateValve(Device):
-    VALVE_ALL_OPEN = 100.0
-    VALVE_ALL_CLOSED = 0.000
-    gate_valve_position = None
-    gate_valve_close_request = None
-    gate_valve_open_request = None
-    gate_valve_fully_open = None
-    gate_valve_fully_closed = None
-     
-    def __init__(self):
-        super(ChamberWithGateValve, self).__init__(*args, **kwargs)
-     
-    def close_gate_valve(self, group='gate_valves'):
-        logger.info("Closing gate valve")
-        yield from bps.abs_set(self.gate_valve_position, \
-                               VALVE_ALL_CLOSED,\
-                               group=group)
-         
-    def open_gate_valve(self, position=VALVE_ALL_OPEN, \
-                        group='gate_valves'):
-        logger.info("Opening gate valve to position %f" % position )
-        yield from bps.abs_set(self.gate_valve_position, \
-                               position, \
-                               group=group)
-         
-class ChamberWithColdCathodeGage(Device):
-    ENABLE_TEXT = 'Enable'
-    DISABLE_TEXT = 'Disable'
-    ccg_power_on = None
-    ccg_pressure = None
- 
-    def __init__(self):
-        super(ChamberWithColdCathodeGage, self).__init__(*args, **kwargs)
-     
-    def disable_ccg(self, group='cathode_gauges'):
-        logging.info("Disabling CCG")
-        yield from abs_set(ccg_power_on, self.DISABLE_TEXT, group=group)
-         
-    def enable_ccg(self, group='cathode_gauges'):
-        logging.info("Disabling CCG")
-        yield from abs_set(ccg_power_on, self.DISABLE_TEXT, group=group)
-         
-
     
 class LandingChamber(DepositionListDevice):
     '''
@@ -400,25 +359,6 @@ class LoadlockChamber(DepositionListDevice):
                   name='ar_backfill_low_rate',
                   string=True)                   
 
-    def close_gate_valve(self, group='gate_valves'):
-        '''
-        Convenient method to close the chamber'gate valve
-        '''
-        logger.info("Closing gate valve")
-        yield from bps.abs_set(self.gate_valve_position, \
-                               VALVE_ALL_CLOSED,\
-                               group=group)
-        
-    def open_gate_valve(self, position=VALVE_ALL_OPEN, \
-                        group='gate_valves'):
-        '''
-        Convenient method to open the chamber's gate valve.  By default, it will 
-        open fully
-        '''
-        logger.info("Opening gate valve to position %f" % position )
-        yield from bps.abs_set(self.gate_valve_position, \
-                               position, \
-                               group=group)
 
     def disable_ccg(self, group='cathode_gauges'):
         '''
