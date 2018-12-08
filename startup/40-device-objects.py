@@ -94,6 +94,67 @@ class DepositionListDevice(Device):
 
         return configuration
         
+class ChamberCryoPump(DepositionListDevice):
+    cryo_power_on = FC(EpicsSignal, 
+                       '{self.prefix}{self.cryo_on_read_pv_suffix}',
+               write_pv='{self.prefix}{self.cryo_on_write_pv_suffix}',
+               name = 'cryo_power_on')
+    cryo_exhaust_to_vp1 = FC(EpicsSignal, 
+                             '{self.prefix}{self.cryo_exhaust_read_pv_suffix}',
+                           write_pv='{self.prefix}{self.cryo_exhaust_write_pv_suffix}',
+                           name = 'cryo_exhaust_to_vp1')
+    cryo_pressure = FC(EpicsSignal, "{self.prefix}{self.cryo_pressure_read_pv_suffix}",
+                    name = 'cryo_pressure')
+    cryo_temperature_status = FC(EpicsSignal, 
+                                 "{self.prefix}{self.cryo_temp_status_read_pv_suffix}",
+                            name= 'cryo_temperature_status')    
+    def __init__(self, prefix, 
+                 cryo_on_read_pv_suffix,
+                 cryo_on_write_pv_suffix,
+                 cryo_exhaust_read_pv_suffix,
+                 cryo_exhaust_write_pv_suffix,
+                 cryo_pressure_read_pv_suffix,
+                 cryo_temp_status_read_pv_suffix, **kwargs):
+        self.cryo_on_read_pv_suffix = cryo_on_read_pv_suffix
+        self.cryo_on_write_pv_suffix = cryo_on_write_pv_suffix
+        self.cryo_exhaust_read_pv_suffix = cryo_exhaust_read_pv_suffix
+        self.cryo_exhaust_write_pv_suffix = cryo_exhaust_write_pv_suffix
+        self.cryo_pressure_read_pv_suffix = cryo_on_read_pv_suffix
+        self.cryo_temp_status_read_pv_suffix = cryo_temp_status_read_pv_suffix
+        super(ChamberCryoPump, self).__init__(prefix, **kwargs)
+        
+    def is_cryo_on(self):
+        return self.cryo_power_on.get() == 1
+        
+    def is_cryo_exhausting_to_vp1(self):
+        return self.cryo_exhaust_to_vp1.get() == 1
+    
+    def set(self):
+        '''
+        Turn the cryo pump on, but make sure that it is ready before turning it
+        on and make sure that it is on before completion
+        '''
+class GateValve(DepositionListDevice):
+    gate_valve_position = FC(EpicsSignal, "{self.prefix}:plc:GV_1_Pos_IN",
+                             write_pv="{self.prefix}:plc:GV_1_Pos_OUT",
+                             tolerance=0.5,
+                             name='gate_valve_position')
+    gate_valve_close_request = FC(EpicsSignal, \
+                      "{self.prefix}:plc:Landing_Chamber_Cryo_GV1_CLOSED_RB", \
+                          write_pv="{self.prefix}:plc:LC_Cryo_GV1_Close_OUT", \
+                          name = 'gate_valve_close_request')
+    gate_valve_open_request = FC(EpicsSignal, \
+                         "{self.prefix}:plc:Landing_Chamber_Cryo_GV1_OPEN_RB", \
+                         write_pv="{self.prefix}:plc:LC_Cryo_GV1_Open_OUT", \
+                         name='gate_valve_open_request')
+    gate_valve_fully_closed = FC(EpicsSignal, \
+                                 '{self.prefix}:plc:LC_GV1_DoorClosed_IN', \
+                                 name = 'gate_valve_fully_closed')
+    gate_valve_fully_open = FC(EpicsSignal, \
+                                 '{self.prefix}:plc:LC_GV1_DoorOpen_IN', \
+                                 name = 'gate_valve_fully_open')
+    
+    
 class ChamberWithGateValve(Device):
     VALVE_ALL_OPEN = 100.0
     VALVE_ALL_CLOSED = 0.000
@@ -142,19 +203,68 @@ class LandingChamber(DepositionListDevice):
     '''
     Device to describe the landing chamber
     '''
-    cryo_power_on = FC(EpicsSignal, 
-                       "{self.prefix}:plc:CP1_Landing_Chamber_Cryo_Pump_RB",
-               write_pv='{self.prefix}:plc:CP1_LC_Cryo_Pump_Off_OUT',
-               name = 'cryo_power_on')
-    cryo_exhaust_to_vp1 = FC(EpicsSignal, 
-                             '{self.prefix}:plc:CP1_Exhaust_to_VP1_RB',
-                           write_pv='{self.prefix}:plc:CP1_Exhaust_VP1_On_OUT',
-                           name = 'cryo_exhaust_to_vp1')
-    cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_5_IN",
-                    name = 'cryo_pressure')
-    cryo_temperature_status = FC(EpicsSignal, 
-                                 "{self.prefix}:plc:Cryo_Pump_1_ok_IN",
-                            name= 'cryo_temperature_status')
+#     cryo_power_on = FC(EpicsSignal, 
+#                        "{self.prefix}:plc:CP1_Landing_Chamber_Cryo_Pump_RB",
+#                write_pv='{self.prefix}:plc:CP1_LC_Cryo_Pump_Off_OUT',
+#                name = 'cryo_power_on')DDC
+#     cryo_exhaust_to_vp1 = FC(EpicsSignal, 
+#                              '{self.prefix}:plc:CP1_Exhaust_to_VP1_RB',
+#                            write_pv='{self.prefix}:plc:CP1_Exhaust_VP1_On_OUT',cryo_temp_status_read_pv_suffix
+#                            name = 'cryo_exhaust_to_vp1')
+#     cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_5_IN",
+#                     name = 'cryo_pressure')
+#     cryo_temperature_status = FC(EpicsSignal, 
+#                                  "{self.prefix}:plc:Cryo_Pump_1_ok_IN",
+#                             name= 'cryo_temperature_status')
+#     cryo_power_on = FC(EpicsSignal, 
+#                        '{self.prefix}{cryo_on_read_pv_suffix}',
+#                write_pv='{self.prefix}{cryo_on_write_pv_suffix}',
+#                name = 'cryo_power_on')
+#     cryo_exhaust_to_vp1 = FC(EpicsSignal, 
+#                              '{self.prefix}{cryo_exhaust_read_pv_suffix}',
+#                            write_pv='{self.prefix}{cryo_exhaust_write_pv_suffix}',
+#                            name = 'cryo_exhaust_to_vp1')
+#     cryo_pressure = FC(EpicsSignal, "{self.prefix}{cryo_pressure_read_pv_suffix}",
+#                     name = 'cryo_pressure')
+#     cryo_temperature_status = FC(EpicsSignal, 
+#                                  "{self.prefix}{cryo_temp_read_pv_suffix}",
+#                             name= 'cryo_temperature_status')    
+    cryo_config = OrderedDict()
+    cryo_config['cryo_pump'] = (ChamberCryoPump, '',
+                                {'cryo_on_read_pv_suffix': ':plc:CP1_Landing_Chamber_Cryo_Pump_RB',
+                                 'cryo_on_write_pv_suffix': ':plc:CP1_LC_Cryo_Pump_Off_OUT',
+                                 'cryo_exhaust_read_pv_suffix': ':plc:CP1_Exhaust_to_VP1_RB',
+                                 'cryo_exhaust_write_pv_suffix':':plc:CP1_Exhaust_VP1_On_OUT',
+                                 'cryo_pressure_read_pv_suffix': ':plc:Cryo_Pump_1_ok_IN',
+                                 'cryo_temp_status_read_pv_suffix': ':plc:Cryo_Pump_1_ok_IN',
+                                 'kind': Kind.normal})
+    print("Cryo_config %s" % cryo_config)
+    cryo_pump = DDC(cryo_config)
+#     cryo_power_on = FC(EpicsSignal, 
+#                        "{self.prefix}:plc:CP1_Landing_Chamber_Cryo_Pump_RB",
+#                write_pv='{self.prefix}:plc:CP1_LC_Cryo_Pump_Off_OUT',
+#                name = 'cryo_power_on')
+#     cryo_exhaust_to_vp1 = FC(EpicsSignal, 
+#                              '{self.prefix}:plc:CP1_Exhaust_to_VP1_RB',#     cryo_power_on = FC(EpicsSignal, 
+#                        "{self.prefix}:plc:CP1_Landing_Chamber_Cryo_Pump_RB",
+#                write_pv='{self.prefix}:plc:CP1_LC_Cryo_Pump_Off_OUT',
+#                name = 'cryo_power_on')
+#     cryo_exhaust_to_vp1 = FC(EpicsSignal, 
+#                              '{self.prefix}:plc:CP1_Exhaust_to_VP1_RB',
+#                            write_pv='{self.prefix}:plc:CP1_Exhaust_VP1_On_OUT',
+#                            name = 'cryo_exhaust_to_vp1')
+#     cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_5_IN",
+#                     name = 'cryo_pressure')
+#     cryo_temperature_status = FC(EpicsSignal, 
+#                                  "{self.prefix}:plc:Cryo_Pump_1_ok_IN",
+#                             name= 'cryo_temperature_status')
+#                            write_pv='{self.prefix}:plc:CP1_Exhaust_VP1_On_OUT',
+#                            name = 'cryo_exhaust_to_vp1')
+#     cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_5_IN",
+#                     name = 'cryo_pressure')
+#     cryo_temperature_status = FC(EpicsSignal, 
+#                                  "{self.prefix}:plc:Cryo_Pump_1_ok_IN",
+#                             name= 'cryo_temperature_status')
     n2_purge = FC(EpicsSignal, "{self.prefix}:plc:N2_Purge_to_CP1_RB",
                   write_pv="{self.prefix}:plc:N2_Purge_CP1_OUT",
                   name = 'n2_purge',
@@ -187,7 +297,19 @@ class LandingChamber(DepositionListDevice):
                                  name = 'gate_valve_fully_open')
 
     def disable_ccg(self, group='cathode_gauges'):
-        logging.info("Disabling CCG")
+        logging.info("Disabling CCG")#     cryo_power_on = FC(EpicsSignal, 
+#                        "{self.prefix}:plc:CP1_Landing_Chamber_Cryo_Pump_RB",
+#                write_pv='{self.prefix}:plc:CP1_LC_Cryo_Pump_Off_OUT',
+#                name = 'cryo_power_on')
+#     cryo_exhaust_to_vp1 = FC(EpicsSignal, 
+#                              '{self.prefix}:plc:CP1_Exhaust_to_VP1_RB',
+#                            write_pv='{self.prefix}:plc:CP1_Exhaust_VP1_On_OUT',
+#                            name = 'cryo_exhaust_to_vp1')
+#     cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_5_IN",
+#                     name = 'cryo_pressure')
+#     cryo_temperature_status = FC(EpicsSignal, 
+#                                  "{self.prefix}:plc:Cryo_Pump_1_ok_IN",
+#                             name= 'cryo_temperature_status')
         yield from bps.abs_set(self.ccg_power_on, CCG_OFF_VALUE, \
                                group=group)
         
@@ -196,12 +318,6 @@ class LandingChamber(DepositionListDevice):
         yield from bps.abs_set(self.ccg_power_on, CCG_ON_VALUE, \
                                group=group)
        
-    def is_cryo_on(self):
-        return self.cryo_power_on.get() == 1
-        
-    def is_cryo_exhausting_to_vp1(self):
-        return self.cryo_exhaust_to_vp1.get() == 1
-    
     def close_gate_valve(self, group='gate_valves'):
         logger.info("Closing gate valve")
         yield from bps.abs_set(self.gate_valve_position, \
@@ -220,17 +336,28 @@ class PlanarChamber(DepositionListDevice):
     '''
     Device to describe the Planar chamber
     '''
-    cryo_power_on = FC(EpicsSignal,
-                         '{self.prefix}:plc:CP2_Planar_Chamber_Cryo_Pump_RB',
-                         write_pv='{self.prefix}:plc:CP2_PC_Cryo_Pump_Off_OUT',
-                         name='cryo_power_on',
-                         string=True)
-    cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_6_IN",
-                    name = 'cryo_pressure')
-    cryo_temperature_status = FC(EpicsSignal, \
-                                 "{self.prefix}:plc:Cryo_Pump_2_ok_IN",
-                                 string=True,
-                                 name='cryo_temp_status')
+    cryo_config = OrderedDict()
+    cryo_config['cryo_pump'] = (ChamberCryoPump, '',
+                                {'cryo_on_read_pv_suffix': ':plc:CP2_Planar_Chamber_Cryo_Pump_RB',
+                                 'cryo_on_write_pv_suffix': ':plc:CP2_PC_Cryo_Pump_Off_OUT',
+                                 'cryo_exhaust_read_pv_suffix': ':plc:CP2_Exhaust_to_VP1_RB',
+                                 'cryo_exhaust_write_pv_suffix':':plc:CP2_Exhaust_VP1_On_OUT',
+                                 'cryo_pressure_read_pv_suffix': ':plc:Cryo_Pump_2_ok_IN',
+                                 'cryo_temp_status_read_pv_suffix': ':plc:Cryo_Pump_2_ok_IN',
+                                 'kind': Kind.normal})
+    print("Cryo_config %s" % cryo_config)
+    cryo_pump = DDC(cryo_config)
+#     cryo_power_on = FC(EpicsSignal,
+#                          '{self.prefix}:plc:CP2_Planar_Chamber_Cryo_Pump_RB',
+#                          write_pv='{self.prefix}:plc:CP2_PC_Cryo_Pump_Off_OUT',
+#                          name='cryo_power_on',
+#                          string=True)
+#     cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_6_IN",
+#                     name = 'cryo_pressure')
+#     cryo_temperature_status = FC(EpicsSignal, \
+#                                  "{self.prefix}:plc:Cryo_Pump_2_ok_IN",
+#                                  string=True,
+#                                  name='cryo_temp_status')
     n2_purge = FC(EpicsSignal, "{self.prefix}:plc:N2_Purge_to_CP2_RB",
                             write_pv="{self.prefix}:plc:N2_Purge_CP2_OUT",
                             name = 'n2_purge',
@@ -238,7 +365,22 @@ class PlanarChamber(DepositionListDevice):
     gate_valve_position = FC(EpicsSignal, "{self.prefix}:plc:GV_2_Pos_IN",
                              write_pv="{self.prefix}:plc:GV_2_Pos_OUT",
                              tolerance=0.5,
-                             name='gate_valve_position')
+                             name='gate_valve_position')#     cryo_power_on = FC(EpicsSignal,
+#                          '{self.prefix}:plc:CP4_Loadlock_Chamber_Cryo_Pump_RB',
+#                          write_pv='{self.prefix}:plc:CP4_LLC_Cryo_Pump_Off_OUT',
+#                          name='cryo_power_on',
+#                          string=True)
+#     cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_8_IN",
+#                     name = 'cryo_pressure')
+#     cryo_temperature_status = FC(EpicsSignal, "{self.prefix}:plc:Cryo_Pump_4_ok_IN",
+#                              string=True,
+#                              name='cryo_temperature_status')
+#     cryo_exhaust_to_vp1 = FC(EpicsSignal, \
+#                          '{self.prefix}:plc:CP4_Exhaust_to_VP1_RB',
+#                          write_pv='{self.prefix}:plc:CP4_Exhaust_VP1_On_OUT',
+#                          name='cryo_exhaust_to_vp1',
+#                          string=True
+#                             )
     gate_valve_close_request = FC(EpicsSignal, \
                       "{self.prefix}:plc:Planar_Chamber_Cryo_GV2_CLOSED_RB", \
                       write_pv="{self.prefix}:plc:LC_Cryo_GV2_Close_OUT", \
@@ -251,18 +393,18 @@ class PlanarChamber(DepositionListDevice):
                      string=True)
     gate_valve_fully_closed = FC(EpicsSignal, \
                      '{self.prefix}:plc:RC_GV2_Closed_IN', \
-                     name = 'gate_valve_fully_closed', \
+                     name = 'gate_valve_fully_closed',
                      string=True)
     gate_valve_fully_open = FC(EpicsSignal, \
                                  '{self.prefix}:plc:RC_GV2_Open_IN', \
                                  name = 'gate_valve_fully_open', \
                                  string=True)
-    cryo_exhaust_to_vp1 = FC(EpicsSignal, \
-                         '{self.prefix}:plc:CP2_Exhaust_to_VP1_RB',
-                         write_pv='{self.prefix}:plc:CP2_Exhaust_VP1_On_OUT',
-                         name='cryo_exhaust_to_vp1',
-                         string=True
-                            )
+#     cryo_exhaust_to_vp1 = FC(EpicsSignal, \
+#                          '{self.prefix}:plc:CP2_Exhaust_to_VP1_RB',
+#                          write_pv='{self.prefix}:plc:CP2_Exhaust_VP1_On_OUT',
+#                          name='cryo_exhaust_to_vp1',
+#                          string=True
+#                             )
     def close_gate_valve(self, group='gate_valves'):
         logger.info("Closing gate valve")
         yield from bps.abs_set(self.gate_valve_position, \
@@ -280,17 +422,28 @@ class RoundChamber(DepositionListDevice):
     '''
     Device to describ the Round Chamber
     '''
-    cryo_power_on = FC(EpicsSignal,
-                         '{self.prefix}:plc:CP3_Round_Chamber_Cryo_Pump_RB',
-                         write_pv='{self.prefix}:plc:CP3_RC_Cryo_Pump_Off_OUT',
-                         name='cryo_power_on',
-                         string=True)
-    cp_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_7_IN",
-                    name = 'cp3_pressure')
-    cryo_temperature_status = FC(EpicsSignal, \
-                                 "{self.prefix}:plc:Cryo_Pump_3_ok_IN", 
-                                 string=True,
-                                 name='cryo_temperature_status')
+    cryo_config = OrderedDict()
+    cryo_config['cryo_pump'] = (ChamberCryoPump, '',
+                                {'cryo_on_read_pv_suffix': ':plc:CP3_Round_Chamber_Cryo_Pump_RB',
+                                 'cryo_on_write_pv_suffix': ':plc:CP3_RC_Cryo_Pump_Off_OUT',
+                                 'cryo_exhaust_read_pv_suffix': ':plc:CP3_Exhaust_to_VP1_RB',
+                                 'cryo_exhaust_write_pv_suffix':':plc:CP3_Exhaust_VP1_On_OUT',
+                                 'cryo_pressure_read_pv_suffix': ':plc:Cryo_Pump_3_ok_IN',
+                                 'cryo_temp_status_read_pv_suffix': ':plc:Cryo_Pump_3_ok_IN',
+                                 'kind': Kind.normal})
+    print("Cryo_config %s" % cryo_config)
+    cryo_pump = DDC(cryo_config)
+#     cryo_power_on = FC(EpicsSignal,
+#                          '{self.prefix}:plc:CP3_Round_Chamber_Cryo_Pump_RB',
+#                          write_pv='{self.prefix}:plc:CP3_RC_Cryo_Pump_Off_OUT',
+#                          name='cryo_power_on',
+#                          string=True)
+#     cp_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_7_IN",
+#                     name = 'cp3_pressure')
+#     cryo_temperature_status = FC(EpicsSignal, \
+#                                  "{self.prefix}:plc:Cryo_Pump_3_ok_IN", 
+#                                  string=True,
+#                                  name='cryo_temperature_status')
     n2_purge = FC(EpicsSignal, "{self.prefix}:plc:N2_Purge_to_CP3_RB",
                   write_pv="{self.prefix}:plc:N2_Purge_CP3_OUT",
                   name = 'n2_purge',
@@ -317,12 +470,12 @@ class RoundChamber(DepositionListDevice):
                                  '{self.prefix}:plc:PC_GV3_Open_IN', \
                                  name = 'gate_valve_fully_open', \
                                  string=True)
-    cryo_exhaust_to_vp1 = FC(EpicsSignal, \
-                         '{self.prefix}:plc:CP3_Exhaust_to_VP1_RB',
-                         write_pv='{self.prefix}:plc:CP3_Exhaust_VP1_On_OUT',
-                         name='cryo_exhaust_to_vp1',
-                         string=True
-                            )
+#     cryo_exhaust_to_vp1 = FC(EpicsSignal, \
+#                          '{self.prefix}:plc:CP3_Exhaust_to_VP1_RB',
+#                          write_pv='{self.prefix}:plc:CP3_Exhaust_VP1_On_OUT',
+#                          name='cryo_exhaust_to_vp1',
+#                          string=True
+#                             )
     
     def close_gate_valve(self, group='gate_valves'):
         '''
@@ -347,22 +500,33 @@ class LoadlockChamber(DepositionListDevice):
     '''
     Device to describe the Load Lock chamber
     '''
-    cryo_power_on = FC(EpicsSignal,
-                         '{self.prefix}:plc:CP4_Loadlock_Chamber_Cryo_Pump_RB',
-                         write_pv='{self.prefix}:plc:CP4_LLC_Cryo_Pump_Off_OUT',
-                         name='cryo_power_on',
-                         string=True)
-    cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_8_IN",
-                    name = 'cryo_pressure')
-    cryo_temperature_status = FC(EpicsSignal, "{self.prefix}:plc:Cryo_Pump_4_ok_IN",
-                             string=True,
-                             name='cryo_temperature_status')
-    cryo_exhaust_to_vp1 = FC(EpicsSignal, \
-                         '{self.prefix}:plc:CP4_Exhaust_to_VP1_RB',
-                         write_pv='{self.prefix}:plc:CP4_Exhaust_VP1_On_OUT',
-                         name='cryo_exhaust_to_vp1',
-                         string=True
-                            )
+    cryo_config = OrderedDict()
+    cryo_config['cryo_pump'] = (ChamberCryoPump, '',
+                                {'cryo_on_read_pv_suffix': ':plc:CP4_Loadlock_Chamber_Cryo_Pump_RB',
+                                 'cryo_on_write_pv_suffix': ':plc:CP4_LLC_Cryo_Pump_Off_OUT',
+                                 'cryo_exhaust_read_pv_suffix': ':plc:CP4_Exhaust_to_VP1_RB',
+                                 'cryo_exhaust_write_pv_suffix':':plc:CP4_Exhaust_VP1_On_OUT',
+                                 'cryo_pressure_read_pv_suffix': ':plc:Cryo_Pump_4_ok_IN',
+                                 'cryo_temp_status_read_pv_suffix': ':plc:Cryo_Pump_4_ok_IN',
+                                 'kind': Kind.normal})
+    print("Cryo_config %s" % cryo_config)
+    cryo_pump = DDC(cryo_config)
+#     cryo_power_on = FC(EpicsSignal,
+#                          '{self.prefix}:plc:CP4_Loadlock_Chamber_Cryo_Pump_RB',
+#                          write_pv='{self.prefix}:plc:CP4_LLC_Cryo_Pump_Off_OUT',
+#                          name='cryo_power_on',
+#                          string=True)
+#     cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_8_IN",
+#                     name = 'cryo_pressure')
+#     cryo_temperature_status = FC(EpicsSignal, "{self.prefix}:plc:Cryo_Pump_4_ok_IN",
+#                              string=True,
+#                              name='cryo_temperature_status')
+#     cryo_exhaust_to_vp1 = FC(EpicsSignal, \
+#                          '{self.prefix}:plc:CP4_Exhaust_to_VP1_RB',
+#                          write_pv='{self.prefix}:plc:CP4_Exhaust_VP1_On_OUT',
+#                          name='cryo_exhaust_to_vp1',
+#                          string=True
+#                             )
     n2_purge = FC(EpicsSignal, "{self.prefix}:plc:N2_Purge_to_CP4_RB",
                   write_pv="{self.prefix}:plc:N2_Purge_CP4_OUT",
                   name = 'n2_purge',
