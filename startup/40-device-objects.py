@@ -135,25 +135,60 @@ class ChamberCryoPump(DepositionListDevice):
         on and make sure that it is on before completion
         '''
 class GateValve(DepositionListDevice):
-    gate_valve_position = FC(EpicsSignal, "{self.prefix}:plc:GV_1_Pos_IN",
-                             write_pv="{self.prefix}:plc:GV_1_Pos_OUT",
+    gate_valve_position = FC(EpicsSignal, "{self.prefix}{self.position_read_pv_suffix}",
+                             write_pv="{self.prefix}{self.position_write_pv_suffix}",
                              tolerance=0.5,
                              name='gate_valve_position')
     gate_valve_close_request = FC(EpicsSignal, \
-                      "{self.prefix}:plc:Landing_Chamber_Cryo_GV1_CLOSED_RB", \
-                          write_pv="{self.prefix}:plc:LC_Cryo_GV1_Close_OUT", \
+                      "{self.prefix}{self.close_request_read_pv_suffix}", \
+                          write_pv="{self.prefix}{self.close_request_write_pv_suffix}", \
                           name = 'gate_valve_close_request')
     gate_valve_open_request = FC(EpicsSignal, \
-                         "{self.prefix}:plc:Landing_Chamber_Cryo_GV1_OPEN_RB", \
-                         write_pv="{self.prefix}:plc:LC_Cryo_GV1_Open_OUT", \
+                         "{self.prefix}{self.open_request_read_pv_suffix}", \
+                         write_pv="{self.prefix}{self.open_request_write_pv_suffix}", \
                          name='gate_valve_open_request')
-    gate_valve_fully_closed = FC(EpicsSignal, \
-                                 '{self.prefix}:plc:LC_GV1_DoorClosed_IN', \
-                                 name = 'gate_valve_fully_closed')
     gate_valve_fully_open = FC(EpicsSignal, \
-                                 '{self.prefix}:plc:LC_GV1_DoorOpen_IN', \
+                                 '{self.prefix}{self.fully_open_read_pv_suffix}', \
                                  name = 'gate_valve_fully_open')
+    gate_valve_fully_closed = FC(EpicsSignal, \
+                                 '{self.prefix}{self.fully_closed_read_pv_suffix}', \
+                                 name = 'gate_valve_fully_closed')
     
+
+    def __init__(self, prefix, 
+                 position_read_pv_suffix, 
+                 position_write_pv_suffix,
+                 close_request_read_pv_suffix,
+                 close_request_write_pv_suffix,
+                 open_request_read_pv_suffix,
+                 open_request_write_pv_suffix,
+                 fully_open_read_pv_suffix,
+                 fully_closed_read_pv_suffix,
+                 **kwargs):
+        self.position_read_pv_suffix = position_read_pv_suffix
+        self.position_write_pv_suffix = position_write_pv_suffix
+        self.close_request_read_pv_suffix = close_request_read_pv_suffix
+        self.close_request_write_pv_suffix = close_request_write_pv_suffix
+        self.open_request_read_pv_suffix = open_request_read_pv_suffix
+        self.open_request_write_pv_suffix = open_request_write_pv_suffix
+        self.fully_open_read_pv_suffix = fully_open_read_pv_suffix
+        self.fully_closed_read_pv_suffix = fully_closed_read_pv_suffix
+        
+        super(GateValve, self).__init__(prefix, **kwargs)
+        
+        
+    def close_gate_valve(self, group='gate_valves'):
+        logger.info("Closing gate valve")
+        yield from bps.abs_set(self.gate_valve_position, \
+                               VALVE_ALL_CLOSED,\
+                               group=group)
+         
+    def open_gate_valve(self, position=VALVE_ALL_OPEN, \
+                        group='gate_valves'):
+        logger.info("Opening gate valve to position %f" % position )
+        yield from bps.abs_set(self.gate_valve_position, \
+                               position, \
+                               group=group)
     
 class ChamberWithGateValve(Device):
     VALVE_ALL_OPEN = 100.0
@@ -277,39 +312,40 @@ class LandingChamber(DepositionListDevice):
     ccg_pressure = FC(EpicsSignal,
                       '{self.prefix}:plc:CCG_1_IN',
                       name='ccg_pressure')
-    gate_valve_position = FC(EpicsSignal, "{self.prefix}:plc:GV_1_Pos_IN",
-                             write_pv="{self.prefix}:plc:GV_1_Pos_OUT",
-                             tolerance=0.5,
-                             name='gate_valve_position')
-    gate_valve_close_request = FC(EpicsSignal, \
-                      "{self.prefix}:plc:Landing_Chamber_Cryo_GV1_CLOSED_RB", \
-                          write_pv="{self.prefix}:plc:LC_Cryo_GV1_Close_OUT", \
-                          name = 'gate_valve_close_request')
-    gate_valve_open_request = FC(EpicsSignal, \
-                         "{self.prefix}:plc:Landing_Chamber_Cryo_GV1_OPEN_RB", \
-                         write_pv="{self.prefix}:plc:LC_Cryo_GV1_Open_OUT", \
-                         name='gate_valve_open_request')
-    gate_valve_fully_closed = FC(EpicsSignal, \
-                                 '{self.prefix}:plc:LC_GV1_DoorClosed_IN', \
-                                 name = 'gate_valve_fully_closed')
-    gate_valve_fully_open = FC(EpicsSignal, \
-                                 '{self.prefix}:plc:LC_GV1_DoorOpen_IN', \
-                                 name = 'gate_valve_fully_open')
+    gate_valve_config = OrderedDict()
+    gate_valve_config['gate_valve'] = (GateValve, '',
+                                {'position_read_pv_suffix': ':plc:GV_1_Pos_IN',
+                                 'position_write_pv_suffix': ':plc:GV_1_Pos_OUT',
+                                 'close_request_read_pv_suffix': ':plc:Landing_Chamber_Cryo_GV1_CLOSED_RB',
+                                 'close_request_write_pv_suffix':':plc:LC_Cryo_GV1_Close_OUT',
+                                 'open_request_read_pv_suffix': ':plc:Landing_Chamber_Cryo_GV1_OPEN_RB',
+                                 'open_request_write_pv_suffix':':plc:LC_Cryo_GV1_Open_OUT',
+                                 'fully_open_read_pv_suffix': ':plc:LC_GV1_DoorOpen_IN',
+                                 'fully_closed_read_pv_suffix': ':plc:LC_GV1_DoorClosed_IN',
+                                 'kind': Kind.normal})
+    gate_valve = DDC(gate_valve_config)
+    #     gate_valve_position = FC(EpicsSignal, "{self.prefix}:plc:GV_1_Pos_IN",
+#                              write_pv="{self.prefix}:plc:GV_1_Pos_OUT",
+#                              tolerance=0.5,
+#                              name='gate_valve_position')
+#     gate_valve_close_request = FC(EpicsSignal, \
+#                       "{self.prefix}:plc:Landing_Chamber_Cryo_GV1_CLOSED_RB", \
+#                           write_pv="{self.prefix}:plc:LC_Cryo_GV1_Close_OUT", \
+#                           name = 'gate_valve_close_request')
+#     gate_valve_open_request = FC(EpicsSignal, \
+#                          "{self.prefix}:plc:Landing_Chamber_Cryo_GV1_OPEN_RB", \
+#                          write_pv="{self.prefix}:plc:LC_Cryo_GV1_Open_OUT", \
+#                          name='gate_valve_open_request')
+#     gate_valve_fully_open = FC(EpicsSignal, \
+#                                  '{self.prefix}:plc:LC_GV1_DoorOpen_IN', \
+#                                  name = 'gate_valve_fully_open')
+# 
+#     gate_valve_fully_closed = FC(EpicsSignal, \
+#                                  '{self.prefix}:plc:LC_GV1_DoorClosed_IN', \
+#                                  name = 'gate_valve_fully_closed')
 
     def disable_ccg(self, group='cathode_gauges'):
-        logging.info("Disabling CCG")#     cryo_power_on = FC(EpicsSignal, 
-#                        "{self.prefix}:plc:CP1_Landing_Chamber_Cryo_Pump_RB",
-#                write_pv='{self.prefix}:plc:CP1_LC_Cryo_Pump_Off_OUT',
-#                name = 'cryo_power_on')
-#     cryo_exhaust_to_vp1 = FC(EpicsSignal, 
-#                              '{self.prefix}:plc:CP1_Exhaust_to_VP1_RB',
-#                            write_pv='{self.prefix}:plc:CP1_Exhaust_VP1_On_OUT',
-#                            name = 'cryo_exhaust_to_vp1')
-#     cryo_pressure = FC(EpicsSignal, "{self.prefix}:plc:PT_5_IN",
-#                     name = 'cryo_pressure')
-#     cryo_temperature_status = FC(EpicsSignal, 
-#                                  "{self.prefix}:plc:Cryo_Pump_1_ok_IN",
-#                             name= 'cryo_temperature_status')
+        logging.info("Disabling CCG")
         yield from bps.abs_set(self.ccg_power_on, CCG_OFF_VALUE, \
                                group=group)
         
