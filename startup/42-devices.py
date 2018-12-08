@@ -5,25 +5,12 @@ from ophyd import Device
 from ophyd.device import ALL_COMPONENTS
 # Set up default complex devices
 
-# FIXME: how to get the PVs to the inner parts?
-# TODO: How to build this up from previously-configured motors?
-
-#class SlitAxis(Device):
-#	lo = Cpt(EpicsMotor, ''){self.prefix}
-#	hi = Cpt(EpicsMotor, '')
-
-#class XY_Slit(Device):
-#	h = Cpt(SlitAxis, '')
-#	v = Cpt(SlitAxis, '')
-
-#slit1 = XY_Slit()
-#m1_VELO = EpicsSignal("depo2:m1.VELO", put_complete=True)
 class DepositionSystem(Device):
     ENABLE = 'Enable'
     DISABLE = 'Disable'
     MAINTENANCE = 'Maintenance'
     RUNNING = 'RUNNING'
-    IOC_REBOOT = 'IOC Reboot'__get
+    IOC_REBOOT = 'IOC Reboot'
     VALVE_ALL_OPEN = 100.0
     m1 = Cpt(EpicsMotor, ':m1', name='m1')
     gun_selector = Cpt(GunSelector, "")
@@ -38,51 +25,85 @@ class DepositionSystem(Device):
                            string=True,
                            name='operation_status')
     
+    def close_vacuum_gate_valves(self):
+        # set up valves to open
+        yield from self.landing_chamber.close_gate_valve( group='gate_valves') 
+        yield from self.planar_chamber.close_gate_valve( group='gate_valves') 
+        yield from self.round_chamber.close_gate_valve( group='gate_valves') 
+        yield from self.loadlock_chamber.close_gate_valve( group='gate_valves') 
+        #wait for all of the valves to openshutdown
+        yield from bps.wait(group='gate_valves')
+
     def disable_ccgs(self):
-        '''{self.prefix}
-        Turns of Cold Cathode gauges in the Landing chamber and Load Lock
-        chamber so that they cannot be damaged by gas flowing.__get
         '''
-        yield from bps.mv(self.landing_chamber.power_on, self.DISABLE)
-        yield from bps.mv(self.load_lock_chamber.power_on, self.DISABLE)
+        Turns of Cold Cathode gauges in the Landing chamber and Load Lock
+        chamber so that they cannot be damaged by gas flowing.
+        '''
+        yield from self.landing_chamber.disable_ccg(group='cathode_gauges')
+        yield from self.loadlock_chamber.disable_ccg(group='cathode_gauges')
+#        yield from bps.wait(group='cathode_gauges')
         
     def enable_ccgs(self):
         '''
-        Enable the Cold Cathode Gauges.  i.e. after finishing a purge{self.prefix}
+        Enable the Cold Cathode Gauges.  i.e. after finishing a purge
         '''
-        yield from bps.mv(self.landing_chamber.power_on, self.ENABLE)
-        yield from bps.mv(self.load_lock_chamber.power_on, self.ENABLE)
+        yield from self.landing_chamber.enable_ccg(group='cathode_gauges')
+        yield from self.loadlock_chamber.enable_ccg(group='cathode_gauges')
         
     def set_operation_status(self, new_status):
         '''
         Valid values of new_status are:
             DepositionSystem.MAINTENANCE
             DepositionSystem.RUNNING
-            DepositionSystem.IOC_REBOOT
+            DepositionSystem.IOC_REBOOT    try:
         '''
-        yield from bps.mv(self.operation_status, new_status)  
+        yield from bps.mv(self.operation_status, new_status)
+        
+    def set_op_status_maintenance(self):
+        yield from self.set_operation_status(self.MAINTENANCE)
+        
+    def set_op_status_running(self):
+        yield from self.set_operation_status(self.RUNNING)
+        
+    def set_op_status_ioc_reboot(self):
+        yield from self.set_operation_status(self.IOC_REBOOT)
 
-    def open_vacuum_gate_valves(self):
-        # set up valves to openDepositionListDevice
-        yield from bps.abs_set(self.landing_chamber.gate_valve_position,
-                               self.VALVE_ALL_OPEN, group='gate_valves' )
-        yield from bps.abs_set(self.planar_chamber.gate_valve_position,
-                               self.VALVE_ALL_OPEN, group='gate_valves')
-        yield from bps.abs_set(self.round_chamber.gate_valve_position,
-                               self.VALVE_ALL_OPEN, group='gate_valves')
-        yield from bps.abs_set(self.loadlock_chamber.gate_valve_position,
-                               self.VALVE_ALL_OPEN, group='gate_valves')
+    def open_vacuum_gate_valves(self, position=VALVE_ALL_OPEN):
+        # set up valves to open
+        yield from self.landing_chamber.open_gate_valve(position=position,
+                                                   group='gate_valves')
+        yield from self.planar_chamber.open_gate_valve(position=position,
+                                                   group='gate_valves')
+        yield from self.round_chamber.open_gate_valve(position=position,
+                                                   group='gate_valves')
+        yield from self.loadlock_chamber.open_gate_valve(position=position,
+                                                   group='gate_valves')
         #wait for all of the valves to open
         yield from bps.wait(group='gate_valves')
-    {self.prefix}
-    def purge_gas_port(self):{self.prefix}
+    
+    def pump_down(self):
+        '''
+        Pump down the chamber from atmosphere
+        '''
+        
+        
+    def purge_gas_port(self):
         '''
         Purge one or more Gas ports to prepare them for use.  
         '''
         yield from self.disable_ccgs()
         yield from self.set_operation_status(self.RUNNING)
         yield from self.open_vacuum_gate_valves()
-        
+        yield from self.gas_mixer.purge_mfcs()
+
+    def startup(self):
+        self.purge()
+                
+    def shutdown(self):
+        self.open_vacuum_gate_valves(position=100)
+        self.disable_ccgs()
+        yield from self.gas_mixer.shutdown()
+        self.set_operation_status(DepositionSystem.MAINTENANCE)
         
 depos_sys = DepositionSystem(prefix="depo2", name='depSys', read_attrs=ALL_COMPONENTS)
  

@@ -1,0 +1,112 @@
+use mds-configuration
+db.createCollection("gun-defaults", {
+	validator: {
+	$jsonSchema: {
+	bsonType: "object",
+	required: ["relay_magnetron", "high_position", "low_position", "mask_width",
+	          "zero_position", "coat_velocity", "travel_velocity"],
+	properties: {
+		"relay_magnetron": {
+		bsonType: "int",
+		description: "relay to control magnetron voltage"
+		},
+		"high_position": {
+		bson_Type:  "double",
+		description: "Position of high end of travel for a gun"
+		},
+		"low_position": {
+		bson_Type:  "double",
+		description: "Position of low end of travel for a gun"
+		},
+		"zero_position": {
+		bson_Type:  "double",
+		description: "Position of zero for a gun"
+		},
+		"coat_velocity": {
+		bson_Type:  "double",
+		description: "velocity used to coat with this gun"
+		},
+		"high_position": {
+		bson_Type:  "double",
+		description: "Position of high end of travel for a gun"
+		},
+
+	}
+	
+	}
+}
+)
+db.createCollection("gun_defaults", {
+	validator: {$or: 
+	[
+	    {"relay_magnetron": {$type: "int", $exists:true}},
+		{"high_position": {$type:  "double", $exists:true}},
+		{"low_position": {$type:  "double", $exists:true}},
+		{"zero_position": {$type:  "double", $exists:true}},
+		{"coat_velocity": {$type:  "double", $exists:true}},
+		{"travel_velocity": {$type: "double", $exists:true}},
+		{"mask_width": {$type: "double", $exists:true}}
+		]
+	}
+}
+)
+
+
+db.createCollection("layer_definition", {
+	validator: {$or: 
+	[
+		{"name": {$type: "string", $exists:true}},
+		{"speed": {$type: "double", $exists:true}},
+		
+		
+		}
+		}
+
+db.createCollection("layer_definition", {
+	validator: {
+		$jsonSchema:{
+			bsonType: "object",
+			required: ["name", "speed", "motor", "start_position", "end_position", "gun",
+				"between_layer_time", "number_of_passes", "description"],
+			properties: {
+			   "name": {
+			       bsonType: "string",
+			       description:  "reference name for this layer structure"
+			       }
+			   "speed": {
+			       bsonType: "double",
+			       description: "coating speed"
+			   },
+			   "motor": {
+			   	   bsonType: "string",
+			   	   description: "motor used for this layer"
+			   },
+			   "start_position": {
+			   	   bsonType: "double", 
+			   	   description: "   "
+			   },
+			   "end_position": {
+			       bsonType: "double",
+			       description: ""
+			   },
+			   "gun": {
+			   	   bsonType: "int",
+			   	   description: "gun number to be used for this layer"
+			   },
+			   "between_layer_time": {
+			   	   bsonType: "double",
+			   	   description: "pause time between each layer"
+			   }
+			   "number_of_passes": {
+			   	   bsonType: "int",
+			   	   description: "number of passes to complete this sublayer"
+			   },
+			   "description": {
+			       bsonType: "string",
+			       description: "string to describe this layer structure"
+			   }
+	   
+			}
+		}
+	}
+}) 
