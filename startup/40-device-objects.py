@@ -94,53 +94,214 @@ class DepositionListDevice(Device):
 
         return configuration
         
+
+class BackFill(DepositionListDevice):
+    ar_high_rate = FC(EpicsSignal,
+                   '{self.prefix}{self.ar_high_rate_read_pv_suffix}',
+                   write_pv='{self.prefix}{self.ar_high_rate_write_pv_suffix}',
+                   name='ar_backfill_high_rate')
+    ar_low_rate = FC(EpicsSignal,
+                  '{self.prefix}{self.ar_low_rate_read_pv_suffix}',
+                  write_pv='{self.prefix}{self.ar_low_rate_write_pv_suffix}',
+                  name='ar_backfill_low_rate')
+    overpressure = FC(EpicsSignal,
+                      '{self.prefix}{self.overpressure_read_pv_suffix}',
+                      write_pv='{self.prefix}{self.overpressure_write_pv_suffix}',
+                      name='overpressure') 
+    
+    def __init__(self, prefix,
+                 ar_high_rate_read_pv_suffix,
+                 ar_high_rate_write_pv_suffix,
+                 ar_low_rate_read_pv_suffix,
+                 ar_low_rate_write_pv_suffix,
+                 overpressure_read_pv_suffix,
+                 overpressure_write_pv_suffix,
+                 **kwargs):
+        self.ar_high_rate_read_pv_suffix = ar_high_rate_read_pv_suffix
+        self.ar_high_rate_write_pv_suffix =ar_high_rate_write_pv_suffix
+        self.ar_low_rate_read_pv_suffix = ar_low_rate_read_pv_suffix
+        self.ar_low_rate_write_pv_suffix = ar_low_rate_write_pv_suffix
+        self.overpressure_read_pv_suffix = overpressure_read_pv_suffix
+        self.overpressure_write_pv_suffix = overpressure_write_pv_suffix
+        super(BackFill,self).__init__(prefix, **kwargs)
+        
+    def set(self, rate):
+        ''' 
+        Set the backfill rate
+        0 - Off
+        1 - Low
+        2 - High
+        ''' 
+        status = DeviceStatus()
+        if rate < 0 or rate > 2:
+            raise ValueError("Backfill value is expected to be one of 0-Off, "
+                             "1-low, 2-high")
+        elif rate == 0:
+            self.ar_high_rate.set(0)
+            self.ar_low_rate.set(0)
+        elif rate == 1:
+            self.ar_high_rate.set(0)
+            self.ar_low_rate.set(1)
+        elif rate == 2:
+            self.ar_low_rate.set(0)
+            self.ar_high_rate.set(1)
+        return status._finished()
+    
 class ChamberCryoPump(DepositionListDevice):
-    cryo_power_on = FC(EpicsSignal, 
-                       '{self.prefix}{self.cryo_on_read_pv_suffix}',
-               write_pv='{self.prefix}{self.cryo_on_write_pv_suffix}',
-               name = 'cryo_power_on')
-    cryo_exhaust_to_vp1 = FC(EpicsSignal, 
-                             '{self.prefix}{self.cryo_exhaust_read_pv_suffix}',
-                           write_pv='{self.prefix}{self.cryo_exhaust_write_pv_suffix}',
-                           name = 'cryo_exhaust_to_vp1')
-    cryo_pressure = FC(EpicsSignal, "{self.prefix}{self.cryo_pressure_read_pv_suffix}",
-                    name = 'cryo_pressure')
-    cryo_temperature_status = FC(EpicsSignal, 
-                                 "{self.prefix}{self.cryo_temp_status_read_pv_suffix}",
-                            name= 'cryo_temperature_status')    
+    power_on = FC(EpicsSignal, 
+                       '{self.prefix}{self.power_on_read_pv_suffix}',
+               write_pv='{self.prefix}{self.power_on_write_pv_suffix}',
+               name = 'power_on')
+    exhaust_to_vp1 = FC(EpicsSignal, 
+                             '{self.prefix}{self.exhaust_read_pv_suffix}',
+                           write_pv='{self.prefix}{self.exhaust_write_pv_suffix}',
+                           name = 'exhaust_to_vp1')
+    pressure = FC(EpicsSignal, "{self.prefix}{self.pressure_read_pv_suffix}",
+                    name = 'pressure')
+    temperature_status = FC(EpicsSignal, 
+                                 "{self.prefix}{self.temp_status_read_pv_suffix}",
+                            name= 'temperature_status')
+    n2_purge = FC(EpicsSignal, "{self.prefix}{self.n2_purge_read_pv_suffix}",
+              write_pv="{self.prefix}{self.n2_purge_write_pv_suffix}",
+              name = 'n2_purge')
+
     def __init__(self, prefix, 
-                 cryo_on_read_pv_suffix,
-                 cryo_on_write_pv_suffix,
-                 cryo_exhaust_read_pv_suffix,
-                 cryo_exhaust_write_pv_suffix,
-                 cryo_pressure_read_pv_suffix,
-                 cryo_temp_status_read_pv_suffix, **kwargs):
-        self.cryo_on_read_pv_suffix = cryo_on_read_pv_suffix
-        self.cryo_on_write_pv_suffix = cryo_on_write_pv_suffix
-        self.cryo_exhaust_read_pv_suffix = cryo_exhaust_read_pv_suffix
-        self.cryo_exhaust_write_pv_suffix = cryo_exhaust_write_pv_suffix
-        self.cryo_pressure_read_pv_suffix = cryo_on_read_pv_suffix
-        self.cryo_temp_status_read_pv_suffix = cryo_temp_status_read_pv_suffix
+                 power_on_read_pv_suffix,
+                 power_on_write_pv_suffix,
+                 exhaust_read_pv_suffix,
+                 exhaust_write_pv_suffix,
+                 pressure_read_pv_suffix,
+                 temp_status_read_pv_suffix, 
+                 n2_purge_read_pv_suffix,
+                 n2_purge_write_pv_suffix,
+                 **kwargs):
+        self.power_on_read_pv_suffix = power_on_read_pv_suffix
+        self.power_on_write_pv_suffix = power_on_write_pv_suffix
+        self.exhaust_read_pv_suffix = exhaust_read_pv_suffix
+        self.exhaust_write_pv_suffix = exhaust_write_pv_suffix
+        self.pressure_read_pv_suffix = pressure_read_pv_suffix
+        self.temp_status_read_pv_suffix = temp_status_read_pv_suffix
+        self.n2_purge_read_pv_suffix = n2_purge_read_pv_suffix
+        self.n2_purge_write_pv_suffix = n2_purge_write_pv_suffix
         super(ChamberCryoPump, self).__init__(prefix, **kwargs)
         
     def is_cryo_on(self):
-        return self.cryo_power_on.get() == 1
+        return self.power_on.get() == 1
         
     def is_cryo_exhausting_to_vp1(self):
-        return self.cryo_exhaust_to_vp1.get() == 1
+        return self.exhaust_to_vp1.get() == 1
     
-    def set(self):
+#     def set(self):
+#         '''
+#         Turn the cryo pump on, but make sure that it is ready before turning it
+#         on and make sure that it is on before completion
+#         '''
+        
+class ColdCathodeGauge(DepositionListDevice):
+    '''
+    Device class to handle aspects of a cold cathode gauge
+    '''
+    ccg_power_on = FC(EpicsSignal, "{self.prefix}{self.power_on_read_pv_suffix}",
+                  write_pv = "{self.prefix}{self.power_on_write_pv_suffix}",
+                  name = 'ccg_power_on',
+                  put_complete=True)
+    ccg_pressure = FC(EpicsSignal,
+                      '{self.prefix}{self.pressure_read_pv_suffix}',
+                      name='ccg_pressure')
+
+    def __init__(self, prefix,
+                 power_on_read_pv_suffix,
+                 power_on_write_pv_suffix,
+                 pressure_read_pv_suffix,
+                 **kwargs):
         '''
-        Turn the cryo pump on, but make sure that it is ready before turning it
-        on and make sure that it is on before completion
+        initialize & grab keys used to complete pv names
         '''
+        self.power_on_read_pv_suffix = power_on_read_pv_suffix
+        self.power_on_write_pv_suffix = power_on_write_pv_suffix
+        self.pressure_read_pv_suffix = pressure_read_pv_suffix
+        super(ColdCathodeGauge, self).__init__(prefix, **kwargs)
+        
+    def disable_ccg(self, group='cathode_gauges'):
+        '''
+        Method to disable the gauge.  This will avoid gauge burnout at high 
+        pressures
+        '''
+        logging.info("Disabling CCG")
+        
+        yield from bps.abs_set(self.ccg_power_on, CCG_OFF_VALUE, \
+                               group=group)
+        
+    def enable_ccg(self, group='cathode_gauges'):
+        '''
+        Enable the gauge to place it in operating state
+        '''
+        logging.info("Disabling CCG")
+        yield from bps.abs_set(self.ccg_power_on, CCG_ON_VALUE, \
+                               group=group)
+    
+class RoughVacuumIndicator(Device):
+    
+    
+#     def set(self, value):
+#         '''need to set this up to turn the gauge on and off but provide protections
+#         needed such as watching the pressure on another less accurate gauge 
+#         to ensure low enough pressure that we dont damage the gauge
+#         '''
+    def __init__(self, prefix,**kwargs):
+        super(RoughVacuumIndicator, self).__init__(prefix, **kwargs)
+
+class SealsPump(DepositionListDevice):
+    power_on = FC(EpicsSignal,
+                  '{self.prefix}{self.power_on_read_pv_suffix}',
+                  write_pv = '{self.prefix}{self.power_on_write_pv_suffix}',
+                  name='power_on')
+    
+    def __init__(self, prefix,
+                 power_on_read_pv_suffix,
+                 power_on_write_pv_suffix,
+                 **kwargs):
+        self.power_on_read_pv_suffix = power_on_read_pv_suffix
+        self.power_on_write_pv_suffix = power_on_write_pv_suffix
+        super(SealsPump, self).__init__(prefix, **kwargs)
+        
+class VariableFrequencyDrivePump(DepositionListDevice):
+    speed = FC(EpicsSignal,
+                '{self.prefix}{self.speed_read_pv_suffix}',
+                write_pv='{self.prefix}{self.speed_write_pv_suffix}',
+                name='speed')
+    n2_purge = FC(EpicsSignal, '{self.prefix}{self.n2_purge_read_pv_suffix}',
+                   write_pv='{self.prefix}{self.n2_purge_write_pv_suffix}',
+                   name='n2_purge')
+    power_on = FC(EpicsSignal,
+                   '{self.prefix}{self.power_on_read_pv_suffix}',
+                   write_pv='{self.prefix}{self.power_on_write_pv_suffix}',
+                   name='power_on')
+    
+    def __init__(self, prefix,
+                 speed_read_pv_suffix,
+                 speed_write_pv_suffix,
+                 n2_purge_read_pv_suffix,
+                 n2_purge_write_pv_suffix,
+                 power_on_read_pv_suffix,
+                 power_on_write_pv_suffix,
+                  **kwargs):
+        self.speed_read_pv_suffix = speed_read_pv_suffix
+        self.speed_write_pv_suffix= speed_write_pv_suffix
+        self.n2_purge_read_pv_suffix = n2_purge_read_pv_suffix
+        self.n2_purge_write_pv_suffix = n2_purge_write_pv_suffix
+        self.power_on_read_pv_suffix = power_on_read_pv_suffix
+        self.power_on_write_pv_suffix = power_on_write_pv_suffix
+        super(VariableFrequencyDrivePump,self).__init__(prefix, **kwargs)
+        
+    
 class GateValve(DepositionListDevice):
     VALVE_ALL_OPEN = 100.0
     VALVE_ALL_CLOSED = 0.000
-    position = FC(EpicsSignal, "{self.prefix}{self.position_read_pv_suffix}",
+    valve_position = FC(EpicsSignal, "{self.prefix}{self.position_read_pv_suffix}",
                              write_pv="{self.prefix}{self.position_write_pv_suffix}",
                              tolerance=0.5,
-                             name='position')
+                             name='valve_position')
     close_request = FC(EpicsSignal, \
                       "{self.prefix}{self.close_request_read_pv_suffix}", \
                           write_pv="{self.prefix}{self.close_request_write_pv_suffix}", \
@@ -181,14 +342,14 @@ class GateValve(DepositionListDevice):
         
     def close(self, group='gate_valves'):
         logger.info("Closing gate valve")
-        yield from bps.abs_set(self.position, \
+        yield from bps.abs_set(self.valve_position, \
                                VALVE_ALL_CLOSED,\
                                group=group)
          
     def open(self, position=VALVE_ALL_OPEN, \
                         group='gate_valves'):
         logger.info("Opening gate valve to position %f" % position )
-        yield from bps.abs_set(self.position, \
+        yield from bps.abs_set(self.valve_position, \
                                position, \
                                group=group)
     
@@ -197,32 +358,29 @@ class LandingChamber(DepositionListDevice):
     '''
     Device to describe the landing chamber
     '''
-    cryo_config = OrderedDict()
-    cryo_config['cryo_pump'] = (ChamberCryoPump, '',
-                                {'cryo_on_read_pv_suffix': ':plc:CP1_Landing_Chamber_Cryo_Pump_RB',
-                                 'cryo_on_write_pv_suffix': ':plc:CP1_LC_Cryo_Pump_Off_OUT',
-                                 'cryo_exhaust_read_pv_suffix': ':plc:CP1_Exhaust_to_VP1_RB',
-                                 'cryo_exhaust_write_pv_suffix':':plc:CP1_Exhaust_VP1_On_OUT',
-                                 'cryo_pressure_read_pv_suffix': ':plc:Cryo_Pump_1_ok_IN',
-                                 'cryo_temp_status_read_pv_suffix': ':plc:Cryo_Pump_1_ok_IN',
-                                 'kind': Kind.normal})
-    print("Cryo_config %s" % cryo_config)
-    cryo_pump = DDC(cryo_config)
-    n2_purge = FC(EpicsSignal, "{self.prefix}:plc:N2_Purge_to_CP1_RB",
-                  write_pv="{self.prefix}:plc:N2_Purge_CP1_OUT",
-                  name = 'n2_purge',
-                  string=True)
-    ccg_power_on = FC(EpicsSignal, "{self.prefix}:plc:Landing_Chamber_CCG1_RB",
-                  write_pv = "{self.prefix}:plc:LC_CCG1_Enable_OUT",
-                  name = 'ccg_power_on',
-                  put_complete=True,
-                  string=True)
-    ccg_pressure = FC(EpicsSignal,
-                      '{self.prefix}:plc:CCG_1_IN',
-                      name='ccg_pressure')
-    gate_valve_config = OrderedDict()
-    gate_valve_config['gate_valve'] = (GateValve, '',
-                                {'position_read_pv_suffix': ':plc:GV_1_Pos_IN',
+    cryo_substitutions = {'power_on_read_pv_suffix': ':plc:CP1_Landing_Chamber_Cryo_Pump_RB',
+                         'power_on_write_pv_suffix': ':plc:CP1_LC_Cryo_Pump_Off_OUT',
+                         'exhaust_read_pv_suffix': ':plc:CP1_Exhaust_to_VP1_RB',
+                         'exhaust_write_pv_suffix':':plc:CP1_Exhaust_VP1_On_OUT',
+                         'pressure_read_pv_suffix': ':plc:Cryo_Pump_1_ok_IN',
+                         'temp_status_read_pv_suffix': ':plc:Cryo_Pump_1_ok_IN',
+                         'n2_purge_read_pv_suffix': ':plc:N2_Purge_to_CP1_RB',
+                         'n2_purge_write_pv_suffix': ':plc:N2_Purge_CP1_OUT',
+                         'kind': Kind.normal}
+    cryo_pump = Cpt(ChamberCryoPump, '', **cryo_substitutions)
+#     ccg_power_on = FC(EpicsSignal, "{self.prefix}:plc:Landing_Chamber_CCG1_RB",
+#                   write_pv = "{self.prefix}:plc:LC_CCG1_Enable_OUT",
+#                   name = 'ccg_power_on',
+#                   put_complete=True)
+#     ccg_pressure = FC(EpicsSignal,
+#                       '{self.prefix}:plc:CCG_1_IN',
+#                       name='ccg_pressure')
+    ccg_substitutions = {'power_on_read_pv_suffix': ':plc:Landing_Chamber_CCG1_RB',
+                         'power_on_write_pv_suffix': ':plc:LC_CCG1_Enable_OUT',
+                         'pressure_read_pv_suffix': ':plc:CCG_1_IN',
+                         'kind': Kind.normal }
+    ccg = Cpt(ColdCathodeGauge, '', **ccg_substitutions)
+    gate_valve_substitutions = {'position_read_pv_suffix': ':plc:GV_1_Pos_IN',
                                  'position_write_pv_suffix': ':plc:GV_1_Pos_OUT',
                                  'close_request_read_pv_suffix': ':plc:Landing_Chamber_Cryo_GV1_CLOSED_RB',
                                  'close_request_write_pv_suffix':':plc:LC_Cryo_GV1_Close_OUT',
@@ -230,115 +388,92 @@ class LandingChamber(DepositionListDevice):
                                  'open_request_write_pv_suffix':':plc:LC_Cryo_GV1_Open_OUT',
                                  'fully_open_read_pv_suffix': ':plc:LC_GV1_DoorOpen_IN',
                                  'fully_closed_read_pv_suffix': ':plc:LC_GV1_DoorClosed_IN',
-                                 'kind': Kind.normal})
-    gate_valve = DDC(gate_valve_config)
-
-    def disable_ccg(self, group='cathode_gauges'):
-        logging.info("Disabling CCG")
-        yield from bps.abs_set(self.ccg_power_on, CCG_OFF_VALUE, \
-                               group=group)
-        
-    def enable_ccg(self, group='cathode_gauges'):
-        logging.info("Disabling CCG")
-        yield from bps.abs_set(self.ccg_power_on, CCG_ON_VALUE, \
-                               group=group)
+                                 'kind': Kind.normal}
+    gate_valve = Cpt(GateValve, "", **gate_valve_substitutions)
        
 
     
 class PlanarChamber(DepositionListDevice):
     '''
-    Device to describe the Planar chamber
+    Device to describe the Planar chamberpower_on_write_pv_suffix
     '''
-    cryo_config = OrderedDict()
-    cryo_config['cryo_pump'] = (ChamberCryoPump, '',
-                                {'cryo_on_read_pv_suffix': ':plc:CP2_Planar_Chamber_Cryo_Pump_RB',
-                                 'cryo_on_write_pv_suffix': ':plc:CP2_PC_Cryo_Pump_Off_OUT',
-                                 'cryo_exhaust_read_pv_suffix': ':plc:CP2_Exhaust_to_VP1_RB',
-                                 'cryo_exhaust_write_pv_suffix':':plc:CP2_Exhaust_VP1_On_OUT',
-                                 'cryo_pressure_read_pv_suffix': ':plc:Cryo_Pump_2_ok_IN',
-                                 'cryo_temp_status_read_pv_suffix': ':plc:Cryo_Pump_2_ok_IN',
-                                 'kind': Kind.normal})
-    print("Cryo_config %s" % cryo_config)
-    cryo_pump = DDC(cryo_config)
-    n2_purge = FC(EpicsSignal, "{self.prefix}:plc:N2_Purge_to_CP2_RB",
-                            write_pv="{self.prefix}:plc:N2_Purge_CP2_OUT",
-                            name = 'n2_purge',
-                            string=True)
-    gate_valve_config = OrderedDict()
-    gate_valve_config['gate_valve'] = (GateValve, '',
-                                {'position_read_pv_suffix': ':plc:GV_2_Pos_IN',
-                                 'position_write_pv_suffix': ':plc:GV_2_Pos_OUT',
-                                 'close_request_read_pv_suffix': ':plc:Planar_Chamber_Cryo_GV2_CLOSED_RB',
-                                 'close_request_write_pv_suffix':':plc:LC_Cryo_GV2_Close_OUT',
-                                 'open_request_read_pv_suffix': ':plc:Planar_Chamber_Cryo_GV2_OPEN_RB',
-                                 'open_request_write_pv_suffix':':plc:LC_Cryo_GV2_Open_OUT',
-                                 'fully_open_read_pv_suffix': ':plc:RC_GV2_Open_IN',
-                                 'fully_closed_read_pv_suffix': ':plc:RC_GV2_Closed_IN',
-                                 'kind': Kind.normal})
-    gate_valve = DDC(gate_valve_config)
+    cryo_substitutions = {
+        'power_on_read_pv_suffix': ':plc:CP2_Planar_Chamber_Cryo_Pump_RB',
+        'power_on_write_pv_suffix': ':plc:CP2_PC_Cryo_Pump_Off_OUT',
+        'exhaust_read_pv_suffix': ':plc:CP2_Exhaust_to_VP1_RB',
+        'exhaust_write_pv_suffix':':plc:CP2_Exhaust_VP1_On_OUT',
+        'pressure_read_pv_suffix': ':plc:Cryo_Pump_2_ok_IN',
+        'temp_status_read_pv_suffix': ':plc:Cryo_Pump_2_ok_IN',
+        'n2_purge_read_pv_suffix': ':plc:N2_Purge_to_CP2_RB',
+        'n2_purge_write_pv_suffix': ':plc:N2_Purge_CP2_OUT',
+        'kind': Kind.normal}
+
+    cryo_pump = Cpt(ChamberCryoPump, '', **cryo_substitutions)
+    gate_valve_substitutions = {
+        'position_read_pv_suffix': ':plc:GV_2_Pos_IN',
+         'position_write_pv_suffix': ':plc:GV_2_Pos_OUT',
+         'close_request_read_pv_suffix': ':plc:Planar_Chamber_Cryo_GV2_CLOSED_RB',
+         'close_request_write_pv_suffix':':plc:LC_Cryo_GV2_Close_OUT',
+         'open_request_read_pv_suffix': ':plc:Planar_Chamber_Cryo_GV2_OPEN_RB',
+         'open_request_write_pv_suffix':':plc:LC_Cryo_GV2_Open_OUT',
+         'fully_open_read_pv_suffix': ':plc:RC_GV2_Open_IN',
+         'fully_closed_read_pv_suffix': ':plc:RC_GV2_Closed_IN',
+         'kind': Kind.normal}
+    gate_valve = Cpt(GateValve, '', **gate_valve_substitutions)
+#     gate_valve = DDC(gate_valve_config)
             
 class RoundChamber(DepositionListDevice):
     '''
     Device to describ the Round Chamber
     '''
-    cryo_config = OrderedDict()
-    cryo_config['cryo_pump'] = (ChamberCryoPump, '',
-                                {'cryo_on_read_pv_suffix': ':plc:CP3_Round_Chamber_Cryo_Pump_RB',
-                                 'cryo_on_write_pv_suffix': ':plc:CP3_RC_Cryo_Pump_Off_OUT',
-                                 'cryo_exhaust_read_pv_suffix': ':plc:CP3_Exhaust_to_VP1_RB',
-                                 'cryo_exhaust_write_pv_suffix':':plc:CP3_Exhaust_VP1_On_OUT',
-                                 'cryo_pressure_read_pv_suffix': ':plc:Cryo_Pump_3_ok_IN',
-                                 'cryo_temp_status_read_pv_suffix': ':plc:Cryo_Pump_3_ok_IN',
-                                 'kind': Kind.normal})
-    print("Cryo_config %s" % cryo_config)
-    cryo_pump = DDC(cryo_config)
-    n2_purge = FC(EpicsSignal, "{self.prefix}:plc:N2_Purge_to_CP3_RB",
-                  write_pv="{self.prefix}:plc:N2_Purge_CP3_OUT",
-                  name = 'n2_purge',
-                  string=True)
-    gate_valve_config = OrderedDict()
-    gate_valve_config['gate_valve'] = (GateValve, '',
-                                {'position_read_pv_suffix': ':plc:GV_3_Pos_IN',
-                                 'position_write_pv_suffix': ':plc:GV_3_Pos_OUT',
-                                 'close_request_read_pv_suffix': ':plc:Round_Chamber_Cryo_GV3_CLOSED_RB',
-                                 'close_request_write_pv_suffix':':plc:LC_Cryo_GV3_Close_OUT',
-                                 'open_request_read_pv_suffix': ':plc:Round_Chamber_Cryo_GV3_OPEN_RB',
+    cryo_substitutions = {
+        'power_on_read_pv_suffix': ':plc:CP3_Round_Chamber_Cryo_Pump_RB',
+        'power_on_write_pv_suffix': ':plc:CP3_RC_Cryo_Pump_Off_OUT',
+        'exhaust_read_pv_suffix': ':plc:CP3_Exhaust_to_VP1_RB',
+        'exhaust_write_pv_suffix':':plc:CP3_Exhaust_VP1_On_OUT',
+        'pressure_read_pv_suffix': ':plc:Cryo_Pump_3_ok_IN',
+        'temp_status_read_pv_suffix': ':plc:Cryo_Pump_3_ok_IN',
+        'n2_purge_read_pv_suffix': ':plc:N2_Purge_to_CP3_RB',
+        'n2_purge_write_pv_suffix': ':plc:N2_Purge_CP3_OUT',
+        'kind': Kind.normal}
+    cryo_pump = Cpt(ChamberCryoPump, '', **cryo_substitutions)
+    gate_valve_substitutions = {'position_read_pv_suffix': ':plc:GV_3_Pos_IN',
+        'position_write_pv_suffix': ':plc:GV_3_Pos_OUT',
+        'close_request_read_pv_suffix': ':plc:Round_Chamber_Cryo_GV3_CLOSED_RB',
+        'close_request_write_pv_suffix':':plc:LC_Cryo_GV3_Close_OUT',
+        'open_request_read_pv_suffix': ':plc:Round_Chamber_Cryo_GV3_OPEN_RB',
                                  'open_request_write_pv_suffix':':plc:LC_Cryo_GV3_Open_OUT',
                                  'fully_open_read_pv_suffix': ':plc:PC_GV3_Open_IN',
                                  'fully_closed_read_pv_suffix': ':plc:PC_GV3_Closed_IN',
-                                 'kind': Kind.normal})
-    gate_valve = DDC(gate_valve_config)
-
+                                 'kind': Kind.normal}
+    gate_valve = Cpt(GateValve, '', **gate_valve_substitutions)
 class LoadlockChamber(DepositionListDevice):
     '''
     Device to describe the Load Lock chamber
     '''
-    cryo_config = OrderedDict()
-    cryo_config['cryo_pump'] = (ChamberCryoPump, '',
-                                {'cryo_on_read_pv_suffix': ':plc:CP4_Loadlock_Chamber_Cryo_Pump_RB',
-                                 'cryo_on_write_pv_suffix': ':plc:CP4_LLC_Cryo_Pump_Off_OUT',
-                                 'cryo_exhaust_read_pv_suffix': ':plc:CP4_Exhaust_to_VP1_RB',
-                                 'cryo_exhaust_write_pv_suffix':':plc:CP4_Exhaust_VP1_On_OUT',
-                                 'cryo_pressure_read_pv_suffix': ':plc:Cryo_Pump_4_ok_IN',
-                                 'cryo_temp_status_read_pv_suffix': ':plc:Cryo_Pump_4_ok_IN',
-                                 'kind': Kind.normal})
-    print("Cryo_config %s" % cryo_config)
-    cryo_pump = DDC(cryo_config)
-    n2_purge = FC(EpicsSignal, "{self.prefix}:plc:N2_Purge_to_CP4_RB",
-                  write_pv="{self.prefix}:plc:N2_Purge_CP4_OUT",
-                  name = 'n2_purge',
-                  string=True)
-    ccg_power_on = FC(EpicsSignal, "{self.prefix}:plc:Loadlock_CCG2_RB",
-                   write_pv = "{self.prefix}:plc:LL_CCG2_Enable_OUT",
-                 name='power_on',
-                 put_complete=True,
-                   string=True)
-    ccg_pressure = FC(EpicsSignal,
-                      '{self.prefix}:plc:CCG_2_IN')
+    cryo_substitutions = {'power_on_read_pv_suffix': ':plc:CP4_Loadlock_Chamber_Cryo_Pump_RB',
+                                 'power_on_write_pv_suffix': ':plc:CP4_LLC_Cryo_Pump_Off_OUT',
+                                 'exhaust_read_pv_suffix': ':plc:CP4_Exhaust_to_VP1_RB',
+                                 'exhaust_write_pv_suffix':':plc:CP4_Exhaust_VP1_On_OUT',
+                                 'pressure_read_pv_suffix': ':plc:Cryo_Pump_4_ok_IN',
+                                 'temp_status_read_pv_suffix': ':plc:Cryo_Pump_4_ok_IN',
+                                 'n2_purge_read_pv_suffix': ':plc:N2_Purge_to_CP4_RB',
+                                 'n2_purge_write_pv_suffix': ':plc:N2_Purge_CP4_OUT',
+                                 'kind': Kind.normal}
+    cryo_pump = Cpt(ChamberCryoPump, '', **cryo_substitutions)
+#     ccg_power_on = FC(EpicsSignal, "{self.prefix}:plc:Loadlock_CCG2_RB",
+#                    write_pv = "{self.prefix}:plc:LL_CCG2_Enable_OUT",
+#                  name='power_on',
+#                  put_complete=True)
+#     ccg_pressure = FC(EpicsSignal,
+#                       '{self.prefix}:plc:CCG_2_IN')
+    ccg_substitutions = {'power_on_read_pv_suffix': ':plc:Loadlock_CCG2_RB',
+                         'power_on_write_pv_suffix': ':plc:LL_CCG2_Enable_OUT',
+                         'pressure_read_pv_suffix': ':plc:CCG_2_IN',
+                         'kind' : Kind.normal}
+    ccg = Cpt(ColdCathodeGauge, '', **ccg_substitutions)
 
-    gate_valve_config = OrderedDict()
-    gate_valve_config['gate_valve'] = (GateValve, '',
-                                {'position_read_pv_suffix': ':plc:GV_4_Pos_IN',
+    gate_valve_substitutions = {'position_read_pv_suffix': ':plc:GV_4_Pos_IN',
                                  'position_write_pv_suffix': ':plc:GV_4_Pos_OUT',
                                  'close_request_read_pv_suffix': ':plc:Loadlock_Chamber_Cryo_GV4_CLOSED_RB',
                                  'close_request_write_pv_suffix':':plc:LC_Cryo_GV4_Close_OUT',
@@ -346,39 +481,32 @@ class LoadlockChamber(DepositionListDevice):
                                  'open_request_write_pv_suffix':':plc:LC_Cryo_GV4_Open_OUT',
                                  'fully_open_read_pv_suffix': ':plc:LL_GV4_Open_IN',
                                  'fully_closed_read_pv_suffix': ':plc:LL_GV4_Closed_IN',
-                                 'kind': Kind.normal})
-    gate_valve = DDC(gate_valve_config)
-    ar_backfill_high_rate = FC(EpicsSignal,
-                   '{self.prefix}:plc:EOV3_Process_Argon_Hi_Backfill_RB',
-                   write_pv='{self.prefix}:plc:LL_Ar_Hi_Bf_On_OUT',
-                   name='ar_backfill_high_# class ChamberWithGateValve(Device):rate',
-                   string=True)
-    ar_backfill_low_rate = FC(EpicsSignal,
-                  '{self.prefix}:plc:Ar_Backfill_to_LL_RB',
-                  write_pv='{self.prefix}:plc:Ar_Backfill_LL_On_OUT',
-                  name='ar_backfill_low_rate',
-                  string=True)                   
-
-
-    def disable_ccg(self, group='cathode_gauges'):
-        '''
-        Method to disable the CCG.  Too much air in the system too quickly is
-        bad for the gauge head
-        '''
-        logging.info("Disabling CCG")
-        yield from bps.abs_set(self.ccg_power_on, \
-                               CCG_OFF_VALUE, \
-                               group=group)
-        
-    def enable_ccg(self, group='cathode_gauges'):
-        '''
-        Method to enable the cold cathode gauge.  
-        '''
-        logging.info("Disabling CCG")
-        yield from bps.abs_set(self.ccg_power_on, \
-                               CCG_ON_VALUE, \
-                               group=group)
-
+                                 'kind': Kind.normal}
+    gate_valve = Cpt(GateValve, '', **gate_valve_substitutions)
+#     ar_backfill_high_rate = FC(EpicsSignal,
+#                    '{self.prefix}:plc:EOV3_Process_Argon_Hi_Backfill_RB',
+#                    write_pv='{self.prefix}:plc:LL_Ar_Hi_Bf_On_OUT',
+#                    name='ar_backfill_high_rate')
+#     ar_backfill_low_rate = FC(EpicsSignal,
+#                   '{self.prefix}:plc:Ar_Backfill_to_LL_RB',
+#                   write_pv='{self.prefix}:plc:Ar_Backfill_LL_On_OUT',
+#                   name='ar_backfill_low_rate')                   
+    backfill_substitutions = {
+        'ar_high_rate_read_pv_suffix': ':plc:EOV3_Process_Argon_Hi_Backfill_RB',
+        'ar_high_rate_write_pv_suffix': ':plc:LL_Ar_Hi_Bf_On_OUT',
+        'ar_low_rate_read_pv_suffix': ':plc:Ar_Backfill_to_LL_RB',
+        'ar_low_rate_write_pv_suffix': ':plc:Ar_Backfill_LL_On_OUT',
+        'overpressure_read_pv_suffix': ':plc:Ar_Backfill_CC_On_OUT',
+        'overpressure_write_pv_suffix': ':plc:Center_Chamber_Overpressure_RB',
+        'kind': Kind.normal}
+    backfill = Cpt(BackFill, '', **backfill_substitutions)
+    exhaust_to_vp1 = FC(EpicsSignal, "{self.prefix}:plc:Loadlock_to_VP1_RB",
+                         write_pv = "{self.prefix}:plc:LL_VP1_On_OUT")
+    door_seal = FC(EpicsSignal, 
+                   '{self.prefix}:plc:EOV4_Loadlock_Door_Seal_RB',
+                   write_pv='{self.prefix}:plc:LL_Door_Seal_Open_OUT',
+                   name='door_seal')
+    
 class CenterChamber(DepositionListDevice):
     '''
     Device to describe the center chamber
@@ -387,25 +515,27 @@ class CenterChamber(DepositionListDevice):
     exhaust_to_vp1 = FC(EpicsSignal,
                         '{self.prefix}:plc:CC_Exhaust_to_VP1_RB',
                         write_pv='{self.prefix}:plc:CC_Exhaust_VP1_On_OUT',
-                        name = 'exhaust_to_vp1',
-                        string='True'
-                        )
+                        name = 'exhaust_to_vp1')
     overpressure = FC(EpicsSignal,
                       '{self.prefix}:plc:Center_Chamber_Overpressure_RB',
                       write_pv='{self.prefix}:plc:CC_OverPress_Close_OUT',
-                      name='overpressure',
-                      string=True) 
-    ar_backfill_high_rate = FC(EpicsSignal,
-                       '{self.prefix}:plc:EOV2_Loadlock_Argon_Hi_Backfill_RB',
-                       write_pv='{self.prefix}:plc:Process_Ar_Hi_Bf_On_OUT',
-                       name='ar_backfill_high_rate',
-                       string=True)
-    ar_backfill_low_rate = FC(EpicsSignal,
-                      '{self.prefix}:plc:Ar_Backfill_to_Center_RB',
-                      write_pv='{self.prefix}:plc:Ar_Backfill_CC_On_OUT',
-                      name='ar_backfill_low_rate',
-                      string=True)
-    
+                      name='overpressure') 
+#     ar_backfill_high_rate = FC(EpicsSignal,
+#                        '{self.prefix}:plc:EOV2_Loadlock_Argon_Hi_Backfill_RB',
+#                        write_pv='{self.prefix}:plc:Process_Ar_Hi_Bf_On_OUT',
+#                        name='ar_backfill_high_rate')
+#     ar_backfill_low_rate = FC(EpicsSignal,
+#                       '{self.prefix}:plc:Ar_Backfill_to_Center_RB',
+#                       write_pv='{self.prefix}:plc:Ar_Backfill_CC_On_OUT',
+#                       name='ar_backfill_low_rate')
+    backfill_substitutions = {'ar_high_rate_read_pv_suffix': ':plc:EOV2_Loadlock_Argon_Hi_Backfill_RB',
+                              'ar_high_rate_write_pv_suffix': ':plc:Process_Ar_Hi_Bf_On_OUT',
+                              'ar_low_rate_read_pv_suffix': ':plc:Ar_Backfill_to_Center_RB',
+                              'ar_low_rate_write_pv_suffix': ':plc:Ar_Backfill_CC_On_OUT',
+                              'overpressure_read_pv_suffix': ':plc:Center_Chamber_Overpressure_RB',
+                              'overpressure_write_pv_suffix': ':plc:CC_OverPress_Close_OUT',
+                              'kind': Kind.normal}
+    backfill = Cpt(BackFill, '', **backfill_substitutions)
         
 
 class MassFlowControl(DepositionListDevice):
