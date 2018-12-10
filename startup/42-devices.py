@@ -20,17 +20,28 @@ class DepositionSystem(Device):
     round_chamber = Cpt(RoundChamber, "")
     loadlock_chamber = Cpt(LoadlockChamber, "")
     center_chamber = Cpt(CenterChamber, "")
+    vp1_substitutions = {'speed_read_pv_suffix': ':plc:VFD_1_IN',
+                         'speed_write_pv_suffix': ':plc:VFD_1_OUT',
+                         'n2_purge_read_pv_suffix': ':plc:EOV5_N2_Purge_to_VP1_RB',
+                         'n2_purge_write_pv_suffix': ':plc:N2_Purge_VP1_Open_OUT',
+                         'power_on_read_pv_suffix': ':plc:VP1_Process_Vacuum_Pump_RB',
+                         'power_on_write_pv_suffix': ':plc:VP1_Process_Vacuum_Pump_RB',
+                         'kind': Kind.normal}
+    vp1 = Cpt(VariableFrequencyDrivePump, '', **vp1_substitutions)
     operation_status = Cpt(EpicsSignal, ":Operations_Status",
                            write_pv=':Operations_Status',
                            string=True,
                            name='operation_status')
+    vp2_substitutions = {'power_on_read_pv_suffix': ':plc:EOV1_VP2_Seals_Pump_RB',
+                         'power_on_write_pv_suffix': ':plc:VP2_Seals_Pump_On_OUT'}
+    vp2 = Cpt(SealsPump, '', **vp2_substitutions)
     
     def close_vacuum_gate_valves(self):
         # set up valves to open
-        yield from self.landing_chamber.close_gate_valve( group='gate_valves') 
-        yield from self.planar_chamber.close_gate_valve( group='gate_valves') 
-        yield from self.round_chamber.close_gate_valve( group='gate_valves') 
-        yield from self.loadlock_chamber.close_gate_valve( group='gate_valves') 
+        yield from self.landing_chamber.gate_valve.gate_valve.close( group='gate_valves') 
+        yield from self.planar_chamber.gate_valve.gate_valve.close( group='gate_valves') 
+        yield from self.round_chamber.gate_valve.gate_valve.close( group='gate_valves') 
+        yield from self.loadlock_chamber.gate_valve.gate_valve.close( group='gate_valves') 
         #wait for all of the valves to openshutdown
         yield from bps.wait(group='gate_valves')
 
@@ -70,13 +81,13 @@ class DepositionSystem(Device):
 
     def open_vacuum_gate_valves(self, position=VALVE_ALL_OPEN):
         # set up valves to open
-        yield from self.landing_chamber.open_gate_valve(position=position,
+        yield from self.landing_chamber.gate_valve.gate_valve.open(position=position,
                                                    group='gate_valves')
-        yield from self.planar_chamber.open_gate_valve(position=position,
+        yield from self.planar_chamber.gate_valve.gate_valve.open(position=position,
                                                    group='gate_valves')
-        yield from self.round_chamber.open_gate_valve(position=position,
+        yield from self.round_chamber.gate_valve.gate_valve.open(position=position,
                                                    group='gate_valves')
-        yield from self.loadlock_chamber.open_gate_valve(position=position,
+        yield from self.loadlock_chamber.gate_valve.gate_valve.open(position=position,
                                                    group='gate_valves')
         #wait for all of the valves to open
         yield from bps.wait(group='gate_valves')
