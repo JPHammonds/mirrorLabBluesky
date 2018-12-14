@@ -20,28 +20,36 @@ class DepositionSystem(Device):
     round_chamber = Cpt(RoundChamber, "")
     loadlock_chamber = Cpt(LoadlockChamber, "")
     center_chamber = Cpt(CenterChamber, "")
-    vp1_substitutions = {'speed_read_pv_suffix': ':plc:VFD_1_IN',
+    vp1_substitutions = {'speed_read_pv_suffix': \
+                         ':plc:VFD_1_IN',
                          'speed_write_pv_suffix': ':plc:VFD_1_OUT',
-                         'n2_purge_read_pv_suffix': ':plc:EOV5_N2_Purge_to_VP1_RB',
-                         'n2_purge_write_pv_suffix': ':plc:N2_Purge_VP1_Open_OUT',
-                         'power_on_read_pv_suffix': ':plc:VP1_Process_Vacuum_Pump_RB',
-                         'power_on_write_pv_suffix': ':plc:VP1_Process_Vacuum_Pump_RB',
+                         'n2_purge_read_pv_suffix': \
+                         ':plc:EOV5_N2_Purge_to_VP1_RB',
+                         'n2_purge_write_pv_suffix': \
+                         ':plc:N2_Purge_VP1_Open_OUT',
+                         'power_on_read_pv_suffix': \
+                         ':plc:VP1_Process_Vacuum_Pump_RB',
+                         'power_on_write_pv_suffix': \
+                         ':plc:VP1_Process_Vacuum_Pump_RB',
                          'kind': Kind.normal}
     vp1 = Cpt(VariableFrequencyDrivePump, '', **vp1_substitutions)
     operation_status = Cpt(EpicsSignal, ":Operations_Status",
                            write_pv=':Operations_Status',
                            string=True,
                            name='operation_status')
-    vp2_substitutions = {'power_on_read_pv_suffix': ':plc:EOV1_VP2_Seals_Pump_RB',
-                         'power_on_write_pv_suffix': ':plc:VP2_Seals_Pump_On_OUT'}
+    vp2_substitutions = {'power_on_read_pv_suffix': \
+                         ':plc:EOV1_VP2_Seals_Pump_RB',
+                         'power_on_write_pv_suffix': \
+                         ':plc:VP2_Seals_Pump_On_OUT',
+                         'kind': Kind.normal}
     vp2 = Cpt(SealsPump, '', **vp2_substitutions)
     
     def close_vacuum_gate_valves(self):
         # set up valves to open
-        yield from self.landing_chamber.gate_valve.gate_valve.close( group='gate_valves') 
-        yield from self.planar_chamber.gate_valve.gate_valve.close( group='gate_valves') 
-        yield from self.round_chamber.gate_valve.gate_valve.close( group='gate_valves') 
-        yield from self.loadlock_chamber.gate_valve.gate_valve.close( group='gate_valves') 
+        yield from self.landing_chamber.gate_valve.close( group='gate_valves') 
+        yield from self.planar_chamber.gate_valve.close( group='gate_valves') 
+        yield from self.round_chamber.gate_valve.close( group='gate_valves') 
+        yield from self.loadlock_chamber.gate_valve.close( group='gate_valves') 
         #wait for all of the valves to openshutdown
         yield from bps.wait(group='gate_valves')
 
@@ -50,16 +58,26 @@ class DepositionSystem(Device):
         Turns of Cold Cathode gauges in the Landing chamber and Load Lock
         chamber so that they cannot be damaged by gas flowing.
         '''
-        yield from self.landing_chamber.disable_ccg(group='cathode_gauges')
-        yield from self.loadlock_chamber.disable_ccg(group='cathode_gauges')
+        yield from self.landing_chamber.ccg.disable(group='cathode_gauges')
+        yield from self.loadlock_chamber.ccg.disable(group='cathode_gauges')
 #        yield from bps.wait(group='cathode_gauges')
         
     def enable_ccgs(self):
         '''
         Enable the Cold Cathode Gauges.  i.e. after finishing a purge
         '''
-        yield from self.landing_chamber.enable_ccg(group='cathode_gauges')
-        yield from self.loadlock_chamber.enable_ccg(group='cathode_gauges')
+        yield from self.landing_chamber.ccg.enable(group='cathode_gauges')
+        yield from self.loadlock_chamber.ccg.enable(group='cathode_gauges')
+        
+    def gate_valve_status(self):
+        logging.info("Load Lock Chamber")
+        self.loadlock_chamber.gate_valve.status()
+        logging.info("Round Chamber")
+        self.round_chamber.gate_valve.status()
+        logging.info("Planar Chamber")
+        self.planar_chamber.gate_valve.status()
+        logging.info("Landing Chamber")
+        self.landing_chamber.gate_valve.status()
         
     def set_operation_status(self, new_status):
         '''
@@ -81,13 +99,13 @@ class DepositionSystem(Device):
 
     def open_vacuum_gate_valves(self, position=VALVE_ALL_OPEN):
         # set up valves to open
-        yield from self.landing_chamber.gate_valve.gate_valve.open(position=position,
+        yield from self.landing_chamber.gate_valve.open(position=position,
                                                    group='gate_valves')
-        yield from self.planar_chamber.gate_valve.gate_valve.open(position=position,
+        yield from self.planar_chamber.gate_valve.open(position=position,
                                                    group='gate_valves')
-        yield from self.round_chamber.gate_valve.gate_valve.open(position=position,
+        yield from self.round_chamber.gate_valve.open(position=position,
                                                    group='gate_valves')
-        yield from self.loadlock_chamber.gate_valve.gate_valve.open(position=position,
+        yield from self.loadlock_chamber.gate_valve.open(position=position,
                                                    group='gate_valves')
         #wait for all of the valves to open
         yield from bps.wait(group='gate_valves')
@@ -96,6 +114,82 @@ class DepositionSystem(Device):
         '''
         Pump down the chamber from atmosphere
         '''
+        if not self.landing_chamber.cryo_pump.is_on():
+            logger.error("CryoPump 1/Landing Chamber is off!!!")
+            raise ValueError("CryoPump 1/Landing Chamber is off!!!")
+        if not self.planar_chamber.cryo_pump.is_on():
+            logger.error("CryoPump 2/Planar Chamber is off!!!")
+            raise ValueError("CryoPump 2/Planar Chamber is off!!!")
+        if not self.round_chamber.cryo_pump.is_on():
+            logger.error("CryoPump 3/Round Chamber is off!!!")
+            raise ValueError("CryoPump 3/Round Chamber is off!!!")
+        if not self.loadlock_chamber.cryo_pump.is_on():
+            logger.error("CryoPump 4/Loadlock Chamber is off!!!")
+            raise ValueError("CryoPump 4/Loadlock Chamber is off!!!")
+            
+        logger.info("Cryo pumps all seem to be working")
+        
+        bps.abs_set(self.center_chamber.backfill, 0)   # Turns off High and low
+        
+        bps.abs_set(self.loadlock_chamber.door_seal, 1)
+        bps.abs_set(self.vp2, 1)
+        
+        bps.abs_set(self.vp1.n2_purge, 1)
+        #bps.abs_set(self.)  #Figure out VP1_Process_Vacuum_Pump_RB
+        bps.abs_set(self.vp1.speed, 60)
+        # Figure out how to wait here, may need to put a check on the pump speed
+        # wind up
+        bps.abs_set(self.landing_chamber.cryo_pump, 1)
+        bps.abs_set(self.landing_chamber.cryo_pump, 1)
+        bps.abs_set(self.landing_chamber.cryo_pump, 1)
+        bps.abs_set(self.landing_chamber.cryo_pump, 1)
+        
+        if self.center_chamber.pressure_1000t.get() < 0.1:
+            logging.info("MAIN CHAMBER APPEARS TO BE ROUGHED PUMPED "
+                         "(1000 TORR GAUGE<0.1). Isolating VP1"
+                         "from LL chamber" )
+            abs_set(self.center_chamber.exhaust_to_vp1, 0,
+                     group='rough_pump')
+        if self.center_chamber.pressure_1000t.get() > 600:
+            logging.info("MAIN CHAMBER needs Roughing")
+            abs_set(self.center_chamber.exhaust_to_vp1, 1, 
+                    group='rough_pump', pump_below = 0.1)
+        # Wait 5 here
+        
+        if self.loadlock_chamber.pressure_1000t.get() < 0.1:
+            logging.info("LL CHAMBER APPEARS TO BE ROUGH PUMPED"
+                         "(1000 TORR GAUGE < 0.1).  Isolating VP1 "
+                          "from  Main Chamber")
+            abs_set(self.loadlock_chamber.exhaust_to_vp1, 0, 
+                    group='rough_pump')
+        if self.loadlock_chamber.pressure_1000t.get() > 600:
+            logging.info("LL CHAMBER REQUIRES ROUGHING"
+                         "(1000 TORR GAUGE < 0.1).  Isolating VP1 "
+                          "from  Main Chamber")
+            abs_set(self.loadlock_chamber.exhaust_to_vp1, 1, 
+                    group='rough_pump', pump_below_1000t = 1,
+                    pump_below_10t=0.1)
+            
+        bps.abs_wait(group = 'rough_pump')
+        
+        if self.landing_chamber.cryo_pump.temp_status.get() == 1:
+            bps.abs_set(self.landing_chamber.gate_valve.position, 100, 
+                        group='open_gv')
+        if self.planar_chamber.cryo_pump.temp_status.get() == 1:
+            bps.abs_set(self.planar_chamber.gate_valve.position, 100,
+                        group='open_gv')
+        if self.round_chamber.cryo_pump.temp_status.get() == 1:
+            bps.abs_set(self.round_chamber.gate_valve.position, 100,
+                        group='open_gv')
+        if self.loadlock_chamber.cryo_pump.temp_status.get() == 1:
+            bps.abs_set(self.loadlock_chamber.gate_valve.position, 100,
+                        group='open_gv')
+    
+        bps.wait(group='open_gv')
+        
+        #set pt1_to_process_chamber
+        bps.abs_set(self.landing_chamber.ccg.set(1))
+        bps.abs_set(self.loadlock_chamber.ccg.set(1))
         
         
     def purge_gas_port(self):
@@ -116,7 +210,9 @@ class DepositionSystem(Device):
         yield from self.gas_mixer.shutdown()
         self.set_operation_status(DepositionSystem.MAINTENANCE)
         
-depos_sys = DepositionSystem(prefix="depo2", name='depSys', read_attrs=ALL_COMPONENTS)
+        
+depos_sys = DepositionSystem(prefix="depo2", name='depSys', \
+                             read_attrs=ALL_COMPONENTS)
  
 for c in depos_sys.component_names:
     child = getattr(depos_sys, c)
