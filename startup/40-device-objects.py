@@ -423,7 +423,7 @@ class LandingChamber(DepositionListDevice):
                          'pressure_read_pv_suffix': ':plc:Cryo_Pump_1_ok_IN',
                          'temp_status_read_pv_suffix': ':plc:Cryo_Pump_1_ok_IN',
                          'n2_purge_read_pv_suffix': ':plc:N2_Purge_to_CP1_RB',
-                         'n2_purge_write_pv_suffixit': ':plc:N2_Purge_CP1_OUT',
+                         'n2_purge_write_pv_suffix': ':plc:N2_Purge_CP1_OUT',
                          'kind': Kind.normal}
     cryo_pump = Cpt(ChamberCryoPump, '', **cryo_substitutions)
 #     ccg_power_on = FC(EpicsSignal, "{self.prefix}:plc:Landing_Chamber_CCG1_RB",
@@ -576,10 +576,13 @@ class LoadlockChamber(DepositionListDevice):
     # gv5 = Cpt(GateValve, '', **gv5_substitutions)
 
     
-class CenterChamber(DepositionListDevice):
+class MainChamber(DepositionListDevice):
     '''
     Device to describe the center chamber
     '''
+    landing_chamber = Cpt(LandingChamber, "")
+    planar_chamber = Cpt(PlanarChamber, "")
+    round_chamber = Cpt(RoundChamber, "")
     
     exhaust_to_vp1 = FC(EpicsSignal,
                         '{self.prefix}:plc:CC_Exhaust_to_VP1_RB',
@@ -618,8 +621,11 @@ class MassFlowControl(DepositionListDevice):
     '''
     Device to describe a mass flow controller
     '''
+    # kwarg name strings
     PURGE_TEXT = 'purge'
     LOW_LEVEL_VALUE_TEXT = 'low_level_value'
+    SETTLE_TIME_TEXT = 'settle_time'
+    
     LOW_LEVEL_DEFAULT_VALUE = 5.0
     VALVE_CLOSED_VALUE = 0
     VALVE_OPEN_VALUE = 1
@@ -703,32 +709,29 @@ class MassFlowControl(DepositionListDevice):
         logger.info("enabling valve mfc%d" % self.instance_number)
         yield from bps.abs_set(self.valve_on, self.VALVE_OPEN_VALUE, \
                                group=group, wait=wait)
-        
-#     def set_flow(self, new_flow, group=None, wait=False):
-#         logger.info("setting mfc%d flow to %f" %(self.instance, new_flow))
-#         yield from bps.abs_set(self.flow, new_flow, group=group, wait=wait)
 
-    def purge(self, leak_rate, low_check_value, group=None, wait=False):
-        '''
-        Purge the syestem.  This method should probably go away.  It is
-        intended to be replaved by the purge option on the "set" command
-        '''
-        logger.info("preparing to purging mfc %d")
-        done_status = DeviceStatus(self)
-        self.valve_on.set(self.VALVE_OPEN_VALUE)
-        self.plc_bypass.set(self.PLC_BYPASS_ENABLE)
-        self.epics_pid_control(self.EPICS_PID_CONTROL_DISABLE)
-        self.flow.set(leak_rate, group=group)
-
-        def purge_done_cb(value, timestamp, **kwargs):
-            if value < low_check_value:
-                logger.info("purge of mfc%d is completed" % self.instance_number)
-                self.valve_on.set(self.VALVE_CLOSED_VALUE, group=group)
-                self.flow.clear_sub(purge_done_cb)
-                done_status._finished()
-
-        self.flow.subscribe(purge_done_cb)
-        return done_status
+# Commented out JPH use set instead 2018-12-18        
+#     def purge(self, leak_rate, low_check_value, group=None, wait=False):
+#         '''
+#         Purge the syestem.  This method should probably go away.  It is
+#         intended to be replaved by the purge option on the "set" command
+#         '''
+#         logger.info("preparing to purging mfc %d")
+#         done_status = DeviceStatus(self)
+#         self.valve_on.set(self.VALVE_OPEN_VALUE)
+#         self.plc_bypass.set(self.PLC_BYPASS_ENABLE)
+#         self.epics_pid_control(self.EPICS_PID_CONTROL_DISABLE)
+#         self.flow.set(leak_rate, group=group)
+# 
+#         def purge_done_cb(value, timestamp, **kwargs):
+#             if value < low_check_value:
+#                 logger.info("purge of mfc%d is completed" % self.instance_number)
+#                 self.valve_on.set(self.VALVE_CLOSED_VALUE, group=group)
+#                 self.flow.clear_sub(purge_done_cb)
+#                 done_status._finished()
+# 
+#         self.flow.subscribe(purge_done_cb)
+#         return done_status
     
     def set(self, flow_rate, **kwargs):
         '''
@@ -741,12 +744,15 @@ class MassFlowControl(DepositionListDevice):
         If purge is false, then it immediately returns a finished status.
         '''
         logger.info("preparing to set flow mfc %f" % flow_rate)
-        logger.info("kwargs %s " % kwargs)
+        settle_time = 5.0
+        # override settle time
+        if self.SETTLE_TIME_TEXT in kwargs:
+            settle_time = kwargs[self.SETTLE_TIME_TEXT]
+        # Create a status object with 5
         done_status = DeviceStatus(self, settle_time=5.0)
         start_time = time.time()
         if self.PURGE_TEXT in kwargs:
             purge = kwargs[self.PURGE_TEXT]
-            # del kwargs[self.PURGE_TEXT]
         else:
             purge = False
         if purge == True:
@@ -758,7 +764,6 @@ class MassFlowControl(DepositionListDevice):
             time.sleep(5)
             if self.LOW_LEVEL_VALUE_TEXT in kwargs:
                 low_level_value = kwargs[self.LOW_LEVEL_VALUE_TEXT]
-                # del kwargs[self.LOW_LEVEL_VALUE_TEXT]
             else:
                 low_level_value = self.LOW_LEVEL_DEFAULT_VALUE
 
@@ -766,7 +771,8 @@ class MassFlowControl(DepositionListDevice):
                 time_now = time.time()
                 time_since_set = time_now - start_time
                 if value < low_level_value:
-                    logger.info("purge of mfc%d is completed" % self.instance_number)
+                    logger.info("purge of mfc%d is completed. Flow = %f" % 
+                                (self.instance_number, value))
                     self.flow.set(0.0)
                     self.valve_on.set(self.VALVE_CLOSED_VALUE)
                     self.flow.clear_sub(purge_done_cb) 
@@ -1233,59 +1239,50 @@ class GunSelector(DepositionListDevice):
         self.number_of_guns = NUMBER_OF_GUNS
         super(GunSelector, self).__init__(*args, **kwargs)
         
-    def disable_gun(self, gun_number, ps_low_level=5.0, override=False):
-        done_status = DeviceStatus(self)
-        logger.info("Disabling gun %d" % gun_number)
-        gun_to_disable = self.guns.__getattr__("gun%d" % gun_number)
-        current_active_gun = self.current_active_gun.get()
-        if (current_active_gun == gun_number) or (override == True):
-            logger.debug("Disable the active gun")
-            self.mps1_disable_output.set(self.ENABLE_TEXT)
-            self.mps1_disable_output.set(self.DISABLE_TEXT)
+#     # Remove this method JPH 2018-12-18.  Use Set method with gun_number = 0
+#     def disable_gun(self, gun_number, ps_low_level=5.0, override=False):
+#         done_status = DeviceStatus(self)
+#         logger.info("Disabling gun %d" % gun_number)
+#         gun_to_disable = self.guns.__getattr__("gun%d" % gun_number)
+#         current_active_gun = self.current_active_gun.get()
+#         if (current_active_gun == gun_number) or (override == True):
+#             logger.debug("Disable the active gun")
+#             self.mps1_disable_output.set(self.ENABLE_TEXT)        :param purge: logical to determine if this se
 
-            def verify_ps1_voltage_cb(value, timestamp, **kwargs):
-                logger.debug("Waiting to reach low volt limit %f voltage %f " % \
-                            (ps_low_level, value))
-                if value < ps_low_level:
-                    logger.info("ps1 has been disabled")
-                    # Once the power supply goes below ps_low_level disable it
-                    gun_to_disable.relay_magnetron.set(self.DISABLE_TEXT)
-                    logger.info("Gun %d is disabled")
-                    self.current_active_gun.set(0.0)
-                    self.ps1_voltage.clear_sub(verify_ps1_voltage_cb)
-                    done_status._finished()
-
-            self.ps1_voltage.subscribe(verify_ps1_voltage_cb)
-        else:
-            logger.info("Request to disable gun %d but it is not the " \
-                        "current_active_gun. Use override=True to force " \
-                        "disable" % gun_number)
+#             self.mps1_disable_output.set(self.DISABLE_TEXT)
+# 
+#             def verify_ps1_voltage_cb(value, timestamp, **kwargs):
+#                 logger.debug("Waiting to reach low volt limit %f voltage %f " % \
+#                             (ps_low_level, value))
+#                 if value < ps_low_level:
+#                     logger.info("ps1 has been disabled")
+#                     # Once the power supply goes below ps_low_level disable it
+#                     gun_to_disable.relay_magnetron.set(self.DISABLE_TEXT)
+#                     logger.info("Gun %d is disabled")
+#                     self.current_active_gun.set(0.0)
+#                     self.ps1_voltage.clear_sub(verify_ps1_voltage_cb)
+#                     done_status._finished()
+# 
+#             self.ps1_voltage.subscribe(verify_ps1_voltage_cb)
+#         else:
+#             logger.info("Request to disable gun %d but it is not the " \
+#                         "current_active_gun. Use override=True to force " \
+#                         "disable" % gun_number)
         
-    def disable_all_guns(self, ps_low_level=5):
-        logger.info("Disabling all guns")
-        done_status = DeviceStatus(self)
-
-        current_active_gun = self.current_active_gun.get()
-        self.mps1_disable_output.set(self.ENABLE_TEXT)
-        self.mps1_disable_output.set(self.DISABLE_TEXT)
-
-        def verify_ps1_voltage_cb(value, timestamp, **kwargs):
-            logger.debug("Waiting to reach low volt limit %f voltage %f " % \
-                        (ps_low_level, value))
-            if value < ps_low_level:
-                logger.info("ps1 has been disabled")
-                # Once the power supply goes below ps_low_level disable it
-                for gun_index in range(1, 9):
-                    gun_to_disable = self.guns.__getattr__("gun%d" % gun_index)
-                    gun_to_disable.relay_magnetron.set(self.DISABLE_TEXT)
-                self.current_active_gun.set(0.0)
-                logger.info("All guns are disabled")
-                self.ps1_voltage.clear_sub(verify_ps1_voltage_cb)
-                done_status._finished()
-
-        self.ps1_voltage.subscribe(verify_ps1_voltage_cb)
         
-    def enable_gun(self, gun_number, ps_low_level=5.0):
+    def _enable_gun(self, gun_number, ps_low_level=5.0):
+        '''
+        Method to enable a specified gun.  This method is meant to be used
+        combined with the set method instead of being used by a script itself.
+        Note it uses object set methods more directly.  This returns status 
+        instead of returning an iterable as needed by other methods used         :param purge: logical to determine if this se
+
+        directly in scripts.
+        :param gun_number: Specifies the gun number to be enabled 
+        :param ps_low_level: ensures that no gun magnetrons are changed
+        until the power supply is below this level
+        :rtype: DeviceStatus
+        '''
         done_status = DeviceStatus(self)
         # Before enabling the relay
         self.mps1_disable_output.set(self.ENABLE_TEXT)
@@ -1296,7 +1293,7 @@ class GunSelector(DepositionListDevice):
             gun_current = self.guns.__getattr__("gun%d" % current_active_gun)
         logger.info("Enabling gun %d, current_active_gun %d" % \
               (gun_number, current_active_gun))
-
+ 
         def verify_ps1_voltage_cb(value, timestamp, **kwargs):
             value = float(value)
             logger.info("Waiting to reach low volt limit %f voltage %f " % \
@@ -1305,7 +1302,7 @@ class GunSelector(DepositionListDevice):
                 print("ps1 has been disabled")
                 # Once the power supply goes below ps_low_level enable it
                 if current_active_gun != 0:
-                    
+                     
                     if gun_number != current_active_gun:
                         logger.info("Disabling gun %d which is already active" % \
                                     current_active_gun)
@@ -1329,21 +1326,32 @@ class GunSelector(DepositionListDevice):
                 else:
                     gun_to_enable.relay_magnetron.set(self.ENABLE_TEXT)
                     self.current_active_gun.set(gun_number)
-                    
+                     
                 self.ps1_voltage.clear_sub(verify_ps1_voltage_cb)
                 done_status._finished()
-
+ 
         # go into the waiting loop.
         self.ps1_voltage.subscribe(verify_ps1_voltage_cb)
         return done_status
 
-    def disable_all_guns(self, ps_low_level=5):
+    def _disable_all_guns(self, ps_low_level=5):
+        '''
+        Method to disable all of the guns.  This method is meant to be used
+        combined with the set method instead of being used by a script itself.
+        Note it uses object set methods more directly.  This returns status 
+        instead of returning an iterable as needed by other methods used 
+        directly in scripts.
+        :param ps_low_level: ensures that no gun magnetrons are changed
+        until the power supply is below this level
+        return DeviceStatus
+        '''
         logger.info("Disabling all guns")
         done_status = DeviceStatus(self)
-
+ 
         current_active_gun = self.current_active_gun.get()
         self.mps1_disable_output.set(self.ENABLE_TEXT)
         self.mps1_disable_output.set(self.DISABLE_TEXT)
+     # Remove this method JPH 2018-12-18 Use Set
 
         def verify_ps1_voltage_cb(value, timestamp, **kwargs):
             logger.debug("Waiting to reach low volt limit %f voltage %f " % \
@@ -1358,7 +1366,7 @@ class GunSelector(DepositionListDevice):
                 logger.info("All guns are disabled")
                 self.ps1_voltage.clear_sub(verify_ps1_voltage_cb)
                 done_status._finished()
-
+ 
         self.ps1_voltage.subscribe(verify_ps1_voltage_cb)
         return done_status
             
@@ -1394,7 +1402,8 @@ class GunSelector(DepositionListDevice):
         yield from bps.mv(self.power_on, False)
         
     def set(self, gun, **kwargs):
-        '''
+        '''        :param purge: logical to determine if this se
+
         Sets the active gun.  Before switching guns, need to ensure that the 
         no guns are receiving power above a threshold value.  The threshold 
         value may be set by including the keyword argument 'ps_low_level'.  
@@ -1409,6 +1418,10 @@ class GunSelector(DepositionListDevice):
         made until the voltage is below the threshold.  Also note, that after 
         the switching of guns, the gun voltage remains disabled.  The user code
         must enable the power supply output before using the gun.
+        :param gun: gun number to activate.  Should be 1-8 for an actual gun or 
+        0 to disable all guns
+        :param ps_low_level
+        
         '''
         logging.info ("Setting gun %d" % gun)
         if gun > 8 or gun < 0:
@@ -1421,7 +1434,7 @@ class GunSelector(DepositionListDevice):
             ps_low_level = kwargs[self.PS_LOW_LEVEL_TEXT]
         print (ps_low_level)
         if gun == 0:
-            return self. disable_all_guns()
+            return self. _disable_all_guns()
         else:
-            return self.enable_gun(gun, ps_low_level=ps_low_level)
+            return self._enable_gun(gun, ps_low_level=ps_low_level)
     
