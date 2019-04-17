@@ -1,3 +1,14 @@
+'''
+This file sets up a set of PVs that will be logged in the mongo database.  
+Note that the object name (e.g. depos_sys.gun_selector.mps1_power) is transformed
+a bit when creating a name used to reference it.  To get a list of the names
+used to reference these use:
+db[-1].stream_names
+To list the values stored for each of these use
+db[-1].table(REF_NAME)    where REF_NAME is one of the names given by the stream_name
+to plot these 
+db[-1].table(REF_NAME).plot()
+'''
 print(__file__)
 
 sd = SupplementalData()
