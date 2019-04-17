@@ -7,12 +7,14 @@ import time
 import databroker
 
 test_layers = [
-    {'speed': 36.5, 'motor': depos_sys.m1, 'start_position':1262,
-     'end_position': 1402, 'selected_gun': 3,
-     'between_layer_time': 5, 'number_of_passes':10, 'description': 'Cd'},
-#     {'speed': 36.10691, 'motor': depos_sys.m1, 'start_position':3207,
-#      'end_position': 3449, 'selected_gun': 7,
-#      'between_layer_time':5, 'number_of_passes':1, 'description': 'B4C'}
+    {'speed': 29.2, 'motor': depos_sys.m1, 
+     'sample_lower_extent': 590, 'sample_upper_extent': 620,
+    'selected_gun': 3, 'gun_power': 170,
+     'between_layer_time': 5, 'number_of_passes':5, 'description': 'Cd'},
+#      {'speed': 36.10691, 'motor': depos_sys.m1,
+#      'sample_lower_extent': 590, 'sample_upper_extent': 620,
+#       'selected_gun': 7, 'gun_power': 47,
+#       'between_layer_time':5, 'number_of_passes':1, 'description': 'B4C'}
     ]
 
 # These load methods need some more work.  In the long run, would loke to be 
@@ -70,6 +72,7 @@ def multi_layer(pattern_name = 'name', from_file=False, pattern_repeat = 1):
         yield from do_mono_layer(layer)
         yield from post_layer(layer)
         
+    @bpp.run_decorator()
     def process_all_layers():
         '''
             Take care of the main coordinating the main steps of layers.
@@ -81,9 +84,28 @@ def multi_layer(pattern_name = 'name', from_file=False, pattern_repeat = 1):
 #             _md['multi_layer'][str(i+1)] = {}
             sub_layer=1
             for layer in pattern:
-                yield from bps.mv(depos_sys.m1.velocity, layer['speed'], \
-                                  depos_sys.m1, )
-                #yield from bps.trigger_and_read(depos_sys)
+                gun = depos_sys.gun_selector.guns.__getattribute__("gun%s" % layer['selected_gun'])
+                gun.set_sample_extents(lower=layer['sample_lower_extent'], \
+                                   upper=layer['sample_upper_extent'])
+                yield from bps.mv(depos_sys.m1.velocity, layer['speed'])
+                yield from bps.mv(layer_state.speed, layer['speed'],
+                                  layer_state.motor, layer['motor'].name,
+                                  layer_state.sample_lower_extent, layer['sample_lower_extent'],
+                                  layer_state.sample_upper_extent, layer['sample_upper_extent'],
+                                  layer_state.zero_position, gun.zero_position.value,
+                                  layer_state.mask_width, gun.mask_width.value,
+                                  layer_state.overspray, gun.overspray.value,
+                                  layer_state.low_position, gun.low_position.value,
+                                  layer_state.high_position, gun.high_position.value,
+                                  layer_state.between_layer_time, layer['between_layer_time'],
+                                  layer_state.selected_gun, layer['selected_gun'],
+                                  layer_state.gun_power, layer['gun_power'],
+                                  layer_state.number_of_passes, layer['number_of_passes'],
+                                  layer_state.description, layer['description'],
+                                  layer_state.layer, i+1,
+                                  layer_state.sub_layer, sub_layer      
+                                  )
+                yield from bps.trigger_and_read([ layer_state,])
                 yield from process_multilayer(i+1, layer)
                 sub_layer += 1
 #             _md['end_time'] = time.ctime()
@@ -105,10 +127,13 @@ def pre_layer( layer):
     def _prepare_layer():
         # bps.mv is basically a set.  pvs are treated like motors since that
         # was the first thing scanned
-        yield from bps.mv(depos_sys.m1.velocity, layer['speed'])
-        yield from bps.mv(depos_sys.m1, layer['start_position'])
+#         yield from bps.mv(depos_sys.m1.velocity, layer['speed'])
+#         yield from bps.mv(depos_sys.m1, layer['start_position'])
+        gun = depos_sys.gun_selector.guns.__getattribute__("gun%s" % layer['selected_gun'])
+        yield from gun.goToHighPosition(depos_sys.m1, speed=gun.coat_velocity.value)
         yield from bps.mv(depos_sys.gun_selector, layer['selected_gun'])
-        print("%s start_position %s" % \
+        yield from bps.mv(depos_sys.gun_selector.mps1_power, layer['gun_power'])
+        print("%s high_position %s" % \
               (depos_sys.m1.name, depos_sys.m1.get()))
         print("%s velocity %s" % \
               (depos_sys.m1.name, depos_sys.m1.velocity.get()))
@@ -130,10 +155,14 @@ def do_mono_layer(layer):
     '''
     logging.info("Starting Mono Layer %s" % layer['description'])
     yield from bps.mv(depos_sys.gun_selector.mps1_enable_output, 1)
+    yield from bps.sleep(layer['between_layer_time'])
     for l in range(layer['number_of_passes']):
-        yield from bps.mv(layer['motor'], layer['end_position'])
-        yield from bps.sleep(1)
-        yield from bps.mv(layer['motor'], layer['start_position'])
+        gun = depos_sys.gun_selector.guns.__getattribute__("gun%s" % layer['selected_gun'])
+#         yield from bps.mv(layer['motor'], layer['end_position'])
+        yield from gun.goToLowPosition(depos_sys.m1, speed=gun.coat_velocity.value)
+        yield from bps.sleep(.1)
+        yield from gun.goToHighPosition(depos_sys.m1, speed=gun.coat_velocity.value)
+#         yield from bps.mv(layer['motor'], layer['start_position'])
         
 def post_layer(layer):
     '''
