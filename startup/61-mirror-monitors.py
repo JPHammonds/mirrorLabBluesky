@@ -8,6 +8,10 @@ To list the values stored for each of these use
 db[-1].table(REF_NAME)    where REF_NAME is one of the names given by the stream_name
 to plot these 
 db[-1].table(REF_NAME).plot()
+
+Note -1 in brackets on db tell it to retrieve the last record.  Can go back more
+with -2, -3, ... or give a specific number for a particular run in the past.  Need 
+to find a good way to get at a particular coating set.
 '''
 print(__file__)
 
