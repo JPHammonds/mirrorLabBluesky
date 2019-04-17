@@ -4,7 +4,7 @@ from datetime import datetime
 
 # Set up default metadata
 
-RE.md['beamline_id'] = 'developer__YOUR_BEAMLINE_HERE'
+RE.md['beamline_id'] = 'MirrorLab'
 RE.md['proposal_id'] = None
 RE.md['pid'] = os.getpid()
 
@@ -21,10 +21,13 @@ def print_scan_ids(name, start_doc):
 callback_db['print_scan_ids'] = RE.subscribe(print_scan_ids, 'start')
 
 import socket 
-import getpass 
+import getpass
+import ophyd 
 HOSTNAME = socket.gethostname() or 'localhost' 
 USERNAME = getpass.getuser() or 'synApps_xxx_user' 
 RE.md['login_id'] = USERNAME + '@' + HOSTNAME
+RE.md['BLUESKY_VERSION'] = bluesky.__version__
+RE.md['OPHYD_VERSION'] = ophyd.__version__
 
 import os
 for key, value in os.environ.items():
