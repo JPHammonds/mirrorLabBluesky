@@ -4,6 +4,7 @@ import logging
 import bluesky.plan_stubs as bps
 from bluesky import preprocessors as bpp
 import time
+import json
 import databroker
 
 test_layers = [
@@ -28,13 +29,20 @@ def load_pattern_from_db(pattern_name):
     '''
     pass
     
-def load_pattern_from_file(pattern_name):
+def load_pattern_from_file(filename):
     '''
     Load pattern from a file.  Should use some common format, json, yaml, ...
     Final format has not been defined.
     
     '''
-    pass
+    with open(filename, "r") as json_file:
+        layers = json.load(json_file)
+    for layer in layers:
+        print(layer)
+        motorName = layer['motor']
+        print(motorName)
+        layer['motor'] = getattr(depos_sys, motorName)
+    return layers
 
 def load_pattern_default():
     '''
@@ -84,11 +92,13 @@ def multi_layer(pattern_name = 'name', from_file=False, pattern_repeat = 1):
 #             _md['multi_layer'][str(i+1)] = {}
             sub_layer=1
             for layer in pattern:
-                gun = depos_sys.gun_selector.guns.__getattribute__("gun%s" % layer['selected_gun'])
+dep             gun = depos_sys.gun_selector.guns.__getattribute__("gun%s" % layer['selected_gun'])
                 gun.set_sample_extents(lower=layer['sample_lower_extent'], \
                                    upper=layer['sample_upper_extent'])
-                yield from bps.mv(depos_sys.m1.velocity, layer['speed'])
-                yield from bps.mv(layer_state.speed, layer['speed'],
+                gun.set_coat_veocity(layer['speed'])
+            
+                yield from bps.mv(depos_sys.m1.velocity, gun.coat_velocity.value)
+                yield from bps.mv(layer_state.speed, gun.coat_velocity.value,
                                   layer_state.motor, layer['motor'].name,
                                   layer_state.sample_lower_extent, layer['sample_lower_extent'],
                                   layer_state.sample_upper_extent, layer['sample_upper_extent'],
@@ -138,7 +148,7 @@ def pre_layer( layer):
         print("%s velocity %s" % \
               (depos_sys.m1.name, depos_sys.m1.velocity.get()))
     
-        return bps.sleep(layer['between_layer_time'])
+        #return bps.sleep(layer['between_layer_time'])
     # Should try removing the return and just yield.  
     return (yield from _prepare_layer())
     
